@@ -1,0 +1,12 @@
+---
+description: MONAT provider-neutral CI and CD constraints
+globs: docs/engineering/CI_CD.md
+alwaysApply: false
+---
+
+# CI/CD
+
+- Keep CI separate from CD. Follow `docs/engineering/CI_CD.md`.
+- Do not add a GitHub Actions, GitLab, or hosting workflow until an ADR names the provider.
+- Do not adopt `originals` or the scaffold `.github/workflows/ci.yml` as the pipeline.
+- Migrations run before traffic. Take a backup before a production migration.

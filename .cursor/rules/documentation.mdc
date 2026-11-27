@@ -1,0 +1,13 @@
+---
+description: MONAT feature docs, status, and progress updates
+globs: docs/**/*.md
+alwaysApply: false
+---
+
+# Documentation
+
+- After a feature change, update its file, `docs/planning/IMPLEMENTATION_STATUS.md`, and `docs/planning/IMPLEMENTATION_PROGRESS.md`.
+- Update the API or database doc when the contract or schema changes. Add an ADR when an architectural decision changes.
+- Do not edit files under `originals/`.
+- Write agent-facing docs in English. Leave the Arabic concept unchanged.
+- Record executed test commands and results. Do not write that tests passed unless they ran.

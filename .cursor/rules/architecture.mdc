@@ -1,0 +1,12 @@
+---
+description: MONAT module boundaries and dependency direction
+globs: src/**/*.module.ts
+alwaysApply: false
+---
+
+# Architecture
+
+- One feature module owns each table. Export services, not repositories.
+- Do not add `@Global()` to a feature module, and do not add `forwardRef`.
+- Keep NestJS as a modular monolith. No microservices, Kafka, gRPC.
+- Read `docs/architecture/MODULES.md` before adding a module.

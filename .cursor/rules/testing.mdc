@@ -1,0 +1,12 @@
+---
+description: MONAT Jest tests and the Verified status
+globs: src/**/*.spec.ts,test/**/*.ts
+alwaysApply: false
+---
+
+# Testing
+
+- Use Jest. Do not add Vitest tests.
+- Cover the cases named in the feature file and `docs/engineering/TESTING_STRATEGY.md`.
+- Integration tests use the configured PostgreSQL and Redis. Do not skip them silently.
+- Do not mark a feature Verified unless this run passed and the progress log records the command and result.

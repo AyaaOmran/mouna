@@ -1,0 +1,13 @@
+---
+description: MONAT NestJS service and controller conventions
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Backend
+
+- CommonJS. Do not append `.js` to relative imports.
+- Controllers validate and map DTOs. Services own rules. Do not return TypeORM entities.
+- Throw coded exceptions from `docs/api/ERROR_HANDLING.md`.
+- Use `class-validator` DTOs. Do not add Zod or a second schema library.
+- Read the feature file in `docs/features/` before changing behavior.

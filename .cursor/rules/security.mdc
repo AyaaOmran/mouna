@@ -1,0 +1,14 @@
+---
+description: MONAT authentication, authorization, and secret handling
+globs: src/**/*guard*.ts,src/**/*strategy*.ts,src/modules/identity/**/*.ts,src/modules/payments/**/*.ts
+alwaysApply: false
+---
+
+# Security
+
+- Access tokens last 15 minutes. Store refresh tokens and OTPs only as hashes.
+- Do not log passwords, tokens, OTP codes, or webhook secrets.
+- Customer queries filter by the authenticated user. A foreign id is 404.
+- Admin routes require the section permission from `docs/product/USER_ROLES_AND_PERMISSIONS.md`.
+- Verify the payment webhook signature before any write. Reject unsigned calls.
+- Read `docs/engineering/SECURITY.md` before changing auth or payments.

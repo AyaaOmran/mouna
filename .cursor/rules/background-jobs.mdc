@@ -1,0 +1,12 @@
+---
+description: MONAT BullMQ jobs, retries, and idempotency
+globs: src/**/*.processor.ts,src/**/*queue*.ts
+alwaysApply: false
+---
+
+# Background jobs
+
+- Queue only OTP SMS, payment expiry, and delivery reminders. See `docs/engineering/BACKGROUND_JOBS.md`.
+- Use a deterministic `jobId`. Handlers must no-op when the row is already in a terminal state.
+- Enqueue after the database transaction commits.
+- Do not add Kafka, RabbitMQ, or a second queue library.

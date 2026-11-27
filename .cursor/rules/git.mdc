@@ -1,0 +1,11 @@
+---
+description: MONAT git and pull request hygiene
+alwaysApply: false
+---
+
+# Git
+
+- Branch from `main`. Open a pull request for review.
+- Do not commit `.env`, credentials, or payment secrets.
+- Do not commit a migration that was edited after it was applied to a shared database. Add a new migration.
+- Commit only when the user asks.

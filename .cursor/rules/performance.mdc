@@ -1,0 +1,12 @@
+---
+description: MONAT query shape, pagination, and caching limits
+globs: src/**/*.service.ts
+alwaysApply: false
+---
+
+# Performance
+
+- Paginate lists. Whitelist sort fields. Do not load a relation per row.
+- Use the indexes named in the ERD and `docs/database/DATABASE_DESIGN.md`.
+- Do not add a Redis response cache unless a measured endpoint misses the target in `docs/engineering/PERFORMANCE_AND_SCALABILITY.md`.
+- Do not call the payment gateway or SMS provider inside a stock transaction.

@@ -1,0 +1,13 @@
+---
+description: MONAT TypeORM schema, transactions, and locks
+globs: src/**/*.entity.ts,src/**/migrations/**/*.ts
+alwaysApply: false
+---
+
+# Database
+
+- `synchronize` stays false. Change schema only with a migration.
+- Integer primary keys. UUID only on `VoiceMessage`.
+- Money and stock are numeric, never `float`.
+- Stock changes use a transaction and row locks in primary-key order.
+- Follow `docs/database/DATABASE_DESIGN.md` for columns that are not in the original ERD.

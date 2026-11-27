@@ -1,0 +1,13 @@
+---
+description: MONAT HTTP contracts, pagination, and localization
+globs: src/**/*.controller.ts,src/**/*.dto.ts
+alwaysApply: false
+---
+
+# API
+
+- Prefix stays `/api/v1`. Do not invent paths missing from `docs/api/API_ENDPOINTS.md`.
+- Lists use `page` and `limit`, maximum 100.
+- Error JSON uses `error.code`, `error.message`, optional `details`, and `request_id`.
+- Localize `message` only. Keep field names, enums, and status codes stable.
+- Swagger must match the preserved OpenAPI file plus `docs/api/API_CONTRACT_DELTAS.md`.

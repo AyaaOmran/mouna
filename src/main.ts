@@ -1,10 +1,38 @@
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import helmet from 'helmet';
-
+import {ValidationPipe,UnprocessableEntityException} from '@nestjs/common';
+import { HttpExceptionFilter } from './common/filters/http-exception.filter.js';
+import type { ValidationError } from 'class-validator';
 import { AppModule } from './app.module.js';
+
+function formatValidationErrors(
+  errors: ValidationError[],
+  parent = '',
+): { field: string; code: string; message: string }[] {
+  return errors.flatMap((error) => {
+    const field = parent
+      ? `${parent}.${error.property}`
+      : error.property;
+
+    const ownErrors = Object.entries(
+      error.constraints ?? {},
+    ).map(([constraint, message]) => ({
+      field,
+      code: constraint.toUpperCase(),
+      message,
+    }));
+
+    return [
+      ...ownErrors,
+      ...formatValidationErrors(
+        error.children ?? [],
+        field,
+      ),
+    ];
+  });
+}
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
@@ -12,7 +40,7 @@ async function bootstrap() {
   const configService = app.get(ConfigService);
 
   // Global API Prefix
-  app.setGlobalPrefix('api');
+  app.setGlobalPrefix('api/v1');
 
   // Security Headers
   app.use(helmet());
@@ -29,6 +57,7 @@ async function bootstrap() {
     credentials: true,
   });
 
+
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -37,7 +66,19 @@ async function bootstrap() {
       transformOptions: {
         enableImplicitConversion: true,
       },
+
+      exceptionFactory: (errors) => {
+        return new UnprocessableEntityException({
+          code: 'VALIDATION_ERROR',
+          message: 'Validation failed',
+          details: formatValidationErrors(errors),
+        });
+      },
     }),
+  );
+
+  app.useGlobalFilters(
+    new HttpExceptionFilter(),
   );
 
   // Swagger Configuration

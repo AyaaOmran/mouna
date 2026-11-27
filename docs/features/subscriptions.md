@@ -2,7 +2,7 @@
 
 ## 1. Feature overview
 
-Customers buy a weekly or seasonal plan. Activation creates delivery rows. Cancellation is an admin decision with a manual refund amount.
+Customers buy a weekly or seasonal plan. Activation creates delivery rows. Cancellation is an admin decision with a manual refund amount and reason.
 
 ## 2. Scope
 
@@ -18,7 +18,7 @@ Public reads active plans. Customer manages own subscriptions. Admin with `subsc
 
 ## 5. Business rules
 
-Payment in full before activation. Fee is zone fee times delivery count. Subtotal snapshots the plan price. Weekly dates add 7 days. Seasonal dates add three calendar months, meaning one delivery per season. Admins may edit a delivery date. Approval of cancellation cancels remaining scheduled deliveries and records the typed refund. Completion follows STATE_MACHINES.
+Payment in full before activation. Fee is zone fee times delivery count. Subtotal snapshots the plan price. Weekly dates add 7 days. Seasonal dates add three calendar months, meaning one delivery per season. Admins may edit a delivery date. Approval of cancellation cancels remaining scheduled deliveries and records the refund amount and reason entered by the admin. Completion follows STATE_MACHINES.
 
 Normative detail: [BUSINESS_LOGIC.md](../product/BUSINESS_LOGIC.md) and [STATE_MACHINES.md](../architecture/STATE_MACHINES.md).
 
@@ -34,7 +34,7 @@ SubscriptionPlan, Subscription, SubscriptionDelivery, SubscriptionCancellationRe
 
 Customer and admin subscription routes in the endpoint list.
 
-Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes follow the preserved OpenAPI file plus [API_CONTRACT_DELTAS.md](../api/API_CONTRACT_DELTAS.md).
+Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes follow [swagger.yaml](../api/swagger.yaml).
 
 ## 9. Validation
 

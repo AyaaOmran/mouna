@@ -1,6 +1,6 @@
 # Technology stack
 
-Pins below are the latest stable releases published on the npm registry or the vendor release page on 27 November 2026. Implementation must re-check the patch version on the day dependencies are installed and record any newer patch in the progress log. Do not move to a new major without an ADR.
+Pins below are the latest stable releases published on the npm registry or vendor release pages on the dates recorded in each row (27–28 November 2026). Implementation must re-check the patch version on the day dependencies are installed and record any newer patch in the progress log. Do not move to a new major without an ADR.
 
 | Component | Version | Source |
 |---|---|---|
@@ -24,17 +24,16 @@ Pins below are the latest stable releases published on the npm registry or the v
 | argon2 | 0.45.2 | npm `latest` |
 | Joi | 18.3.2 | Already used by `ConfigModule` in the scaffold |
 | Helmet | 8.3.0 | npm `latest` |
-| Jest | 30.5.2 | npm `latest` |
-| ts-jest | 29.4.15 | Peer accepts Jest 29 or 30 and TypeScript below 7 |
-| @types/jest | 30.0.0 | npm `latest` |
+| Vitest | 5.1.2 | npm `latest`, checked 28 November 2026 |
+| @vitest/coverage-v8 | 5.1.2 | Matches the Vitest runner version; npm `latest`, checked 28 November 2026 |
 | supertest | 7.3.2 | npm `latest` |
 | reflect-metadata | 0.2.2 | Satisfies the Nest 12 peer and is already in the scaffold |
 
 ## Module system and tests
 
-CommonJS application. Jest, not Vitest. The scaffold's `"type": "module"` and Vitest config are replaced during the foundation phase. Relative imports do not use a `.js` suffix.
+The application is native ESM and uses Vitest. Keep `"type": "module"` in `package.json`; TypeScript must use `"module": "NodeNext"` and `"moduleResolution": "NodeNext"`. Relative imports include the emitted `.js` extension even when the source file is `.ts` (for example, `import { UsersService } from './users.service.js'`). Do not use CommonJS globals (`require`, `module.exports`, `__dirname`, or `__filename`). Use `import.meta.dirname` on the selected Node 26 runtime, or `fileURLToPath(import.meta.url)` when portable file-path handling is needed.
 
-Nest's own packages are ESM-only. Node 26 loads them from CommonJS. AWS Lambda is not a target. If a future host disables `require(esm)`, that is a deployment decision and blocks the host, not this ADR.
+Vitest is the only test runner. Pin `vitest` and `@vitest/coverage-v8` to the same compatible release line. The version above was the current stable release on 28 November 2026; re-check the compatible patch when installing. Do not install Jest, `ts-jest`, or `@types/jest`. Keep `@nestjs/testing`; it is test-runner agnostic. Keep test APIs explicit (import `describe`, `it`, `expect`, and `vi` from `vitest`) and leave Vitest globals disabled. For E2E tests, use a default Supertest import (`import request from 'supertest'`).
 
 ## Lint and format
 
@@ -42,4 +41,4 @@ The scaffold uses oxlint and Prettier. Keep them. Do not add ESLint beside oxlin
 
 ## Not adopted
 
-Kafka, gRPC, Socket.IO, Sequelize, Mongoose, Docker, Kubernetes, and a CI vendor. `@nestjs/schedule` may only enqueue a BullMQ job if a sweep cannot be expressed as a BullMQ repeatable job. It is not the job system.
+Kafka, gRPC, Socket.IO, Sequelize, Mongoose, Docker, Kubernetes, and a CI vendor. `@nestjs/schedule` is not adopted. Every sweep is a BullMQ repeatable job.

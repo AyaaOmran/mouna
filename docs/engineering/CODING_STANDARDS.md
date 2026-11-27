@@ -1,6 +1,6 @@
 # Coding standards
 
-- CommonJS TypeScript. Strict compiler options stay on. Do not set `strictPropertyInitialization` to false for new entity files if a definite assignment or `!` is avoidable. The scaffold currently disables it. New code should not depend on that.
+- Native ESM TypeScript. `package.json` must declare `"type": "module"`; TypeScript uses `module` and `moduleResolution` set to `NodeNext`. Relative imports include `.js` extensions, matching emitted files. Do not use `require`, `module.exports`, `__dirname`, or `__filename`; use ESM imports/exports and `import.meta.dirname` or `fileURLToPath(import.meta.url)`. Strict compiler options stay on. Do not set `strictPropertyInitialization` to false for new entity files if a definite assignment or `!` is avoidable.
 - Feature folders under `src/modules/<feature>/` with `module`, `controller`, `service`, `dto`, and `entity` files.
 - One class per file. Names match the file.
 - DTOs are classes. Response DTOs are separate from entities.

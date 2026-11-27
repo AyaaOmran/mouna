@@ -1,12 +1,12 @@
 # MONAT agent instructions
 
-MONAT (مونة الجدّات) is a modular-monolith NestJS API. CommonJS, TypeScript, PostgreSQL, TypeORM, Swagger, Jest, Redis, and BullMQ are fixed.
+MONAT (مونة الجدّات) is a modular-monolith NestJS API. ESM, TypeScript, PostgreSQL, TypeORM, Swagger, Vitest, Redis, and BullMQ are fixed.
 
 ## Before coding
 
 1. Read the feature file in `docs/features/` and `docs/product/BUSINESS_LOGIC.md`.
 2. If the work touches status changes, read `docs/architecture/STATE_MACHINES.md`.
-3. If the work touches schema or HTTP, read `docs/database/DATABASE_DESIGN.md` and `docs/api/API_CONTRACT_DELTAS.md`.
+3. If the work touches schema or HTTP, read `docs/database/DATABASE_DESIGN.md` and the relevant paths in `docs/api/swagger.yaml` (contract v2.3.0).
 4. Apply the skill `monat-feature-workflow`. Load `nestjs-universe` when editing NestJS code.
 5. Do not invent business rules, entities, endpoints, or providers. Gaps belong in `docs/planning/OPEN_QUESTIONS.md`.
 

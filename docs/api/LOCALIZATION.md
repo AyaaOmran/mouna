@@ -31,6 +31,10 @@ The response field is still `name`. For `en`, use `name_en` when it is non-empty
 
 Do not add a `translations` table.
 
+## Admin screens
+
+Admin read responses return both columns so staff can edit both languages: `name` (Arabic) and `name_en` (nullable), and the same pair for every field in the `*_en` table. Admin create and update bodies accept both. Admin responses do not depend on `Accept-Language` for catalog text. The OpenAPI contract uses admin-specific response schemas, including nested references, where a public/customer response uses a single localized field. Public and customer responses return one localized field, as described above.
+
 ## Notifications
 
 Insert `type` plus `message`. `message` is rendered from the catalog in the requester's locale, or in the default locale for system jobs. The expiry job and the reminder job use the customer's last known preference when one exists. No preference column is defined. Those jobs use the default locale until a preference is approved. This limit is listed in [OPEN_QUESTIONS.md](../planning/OPEN_QUESTIONS.md).

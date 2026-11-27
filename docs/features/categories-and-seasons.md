@@ -10,11 +10,11 @@ In: category and season writes. Out: automatic season status storage.
 
 ## 3. User roles
 
-Admin with `categories`.
+Admins with `products` or `categories` may read the category and season lists for product forms. Only admins with `categories` may create or update these records.
 
 ## 4. Permissions
 
-`categories`.
+Read: `products` or `categories`. Mutations: `categories`.
 
 ## 5. Business rules
 
@@ -34,7 +34,7 @@ Category, Season, Product, SubscriptionPlan.
 
 `/admin/categories`, `/admin/seasons`, and the public GET routes.
 
-Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes follow the preserved OpenAPI file plus [API_CONTRACT_DELTAS.md](../api/API_CONTRACT_DELTAS.md).
+Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes follow [swagger.yaml](../api/swagger.yaml).
 
 ## 9. Validation
 

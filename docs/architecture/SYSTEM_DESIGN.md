@@ -36,7 +36,7 @@ Workers are part of the modular monolith. They are not a separate service in v1.
 
 | Concern | Decision |
 |---|---|
-| Module format | CommonJS. Nest 12 packages are ESM and load through Node `require(esm)`. |
+| Module format | Native ESM. `package.json` declares `type: module`; TypeScript uses NodeNext; relative imports use `.js` suffixes. |
 | IDs | Integer PKs. Public QR uses `VoiceMessage.uuid`. |
 | Schema | Migrations only. `synchronize: false`. |
 | Money | `numeric(10,2)`, currency SYP |

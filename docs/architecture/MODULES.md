@@ -25,7 +25,7 @@ Each module owns its tables and its admin and customer controllers. A separate "
 
 ## Controllers
 
-Public and admin controllers live beside the feature. Routes match [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Swagger decorators match the OpenAPI contract plus [API_CONTRACT_DELTAS.md](../api/API_CONTRACT_DELTAS.md).
+Public and admin controllers live beside the feature. Routes and Swagger decorators match [swagger.yaml](../api/swagger.yaml).
 
 ## Background processors
 

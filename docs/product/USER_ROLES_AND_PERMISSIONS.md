@@ -34,6 +34,27 @@ Super Admin only, not grantable: create and edit admins, assign permissions, sys
 
 Seed these ten rows in a migration. Do not add operation-level rows unless a later ADR says so.
 
+## Route to section mapping
+
+`swagger.yaml` uses these names in `x-required-permission`. A route needs the section listed, or the Super Admin role.
+
+| Routes | Section |
+|---|---|
+| `GET /admin/dashboard` | Any authenticated admin |
+| `/admin/grandmas*`, `/admin/recipes*`, `/admin/voice-messages*` | `grandmas` |
+| `/admin/products*` (boxes are created and edited here with the `box` object) and product images | `products` |
+| `GET /admin/categories`, `GET /admin/seasons` | `products` or `categories` (read-only reference data for the product form) |
+| Category and season create/update routes | `categories` |
+| Admin order mutations (note, approve, reject, status, shipment, cancel, refunds) | `orders` |
+| `GET /admin/orders` and `GET /admin/orders/{id}` | `orders`, or `events` (results/details limited to `order_type = event`), or `gifts` (results/details limited to `is_gift = true`) |
+| `/admin/subscription-plans*`, `/admin/subscriptions*`, cancellation requests, subscription deliveries, subscription refunds | `subscriptions` |
+| `/admin/delivery-zones*`, `/admin/delivery-periods*`, `/admin/delivery-slots*`, `/admin/holidays*`, `/admin/settings/delivery`, `/admin/shipping-countries*`, `/admin/shipping-companies*` | `delivery` |
+| `/admin/customers*` | `customers` |
+| `/admin/reports/*` | `reports` |
+| `/super-admin/*` | Super Admin only |
+
+No mutation accepts `events` or `gifts`. The canonical section name for delivery settings is `delivery`. There is no `boxes_gifts` section.
+
 ## Activity log
 
 Write an `ActivityLog` row for successful admin and super-admin mutations: actor, action name, entity type, entity id, time. Do not log secrets or full payment payloads.

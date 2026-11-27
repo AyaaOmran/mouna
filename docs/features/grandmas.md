@@ -34,7 +34,7 @@ Grandma, Recipe, VoiceMessage.
 
 Admin routes under `/admin/grandmas` and `/admin/recipes` and `/admin/voice-messages` from the endpoint list.
 
-Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes follow the preserved OpenAPI file plus [API_CONTRACT_DELTAS.md](../api/API_CONTRACT_DELTAS.md).
+Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes follow [swagger.yaml](../api/swagger.yaml).
 
 ## 9. Validation
 

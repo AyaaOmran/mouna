@@ -1,6 +1,6 @@
 ---
 name: nestjs-universe
-description: NestJS standards for the MONAT API. Use when editing NestJS modules, controllers, services, DTOs, entities, guards, processors, migrations, or Jest tests in this repository. CommonJS, TypeORM, PostgreSQL, Jest, Redis, and BullMQ only.
+description: NestJS standards for the MONAT API. Use when editing NestJS modules, controllers, services, DTOs, entities, guards, processors, migrations, or Vitest tests in this repository. ESM, TypeORM, PostgreSQL, Vitest, Redis, and BullMQ only.
 ---
 
 # NestJS Universe (MONAT)
@@ -11,9 +11,9 @@ This skill is the MONAT profile of the original `nestjs-universe` skill. The unt
 
 | Choice | Rule |
 |---|---|
-| CommonJS | No `.js` suffix on relative imports. Do not switch the app to ESM. |
+| ESM | `package.json` uses `"type": "module"`; TypeScript uses `NodeNext`; relative imports use `.js` suffixes. |
 | TypeORM | The only ORM. `synchronize: false`. |
-| Jest | The only test runner. |
+| Vitest | The only test runner. |
 | class-validator | The only DTO validator. |
 | BullMQ | The only queue. |
 
@@ -35,7 +35,7 @@ This skill is the MONAT profile of the original `nestjs-universe` skill. The unt
 - TypeORM: [references/database-orm-migrations.md](references/database-orm-migrations.md)
 - Auth: [references/auth-and-security.md](references/auth-and-security.md)
 - Performance: [references/performance-and-caching.md](references/performance-and-caching.md)
-- Jest: [references/testing-and-quality.md](references/testing-and-quality.md)
+- Vitest: [references/testing-and-quality.md](references/testing-and-quality.md)
 - BullMQ: [references/queues-and-background-jobs.md](references/queues-and-background-jobs.md)
 
 Product behavior stays in `docs/`. This skill does not restate it.

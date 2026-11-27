@@ -65,9 +65,23 @@ Add the same check to `Refund`.
 
 `gateway_reference` stays unique. Multiple pending attempts may have a null reference until the gateway returns one. Use a partial unique index where `gateway_reference IS NOT NULL` if the gateway can omit it on creation.
 
+## Address-book limit
+
+Each customer may have at most 5 active saved address rows (`deleted_at IS NULL`). Historical soft-deleted rows remain available to orders/subscriptions and do not count. The application must enforce this under concurrency: in the same transaction, take a pessimistic write lock on the owning `User` entity row (`SELECT … FOR UPDATE` against its TypeORM-mapped table), count active addresses, and insert only if the count is below five. Every operation that can increase the active count must take the same parent-row lock. A referenced-address replacement must soft-delete the old row and insert the replacement atomically. Do not use a plain count without the parent-row lock; concurrent requests could both see four rows and create a sixth.
+
+Add this partial index by migration to support the active-address lookup/count:
+
+```sql
+CREATE INDEX idx_addresses_active_by_user
+  ON addresses (user_id)
+  WHERE deleted_at IS NULL;
+```
+
+This complements (and does not replace) the ERD partial unique index for one default address. No `Address` column is required for the cap.
+
 ## Indexes
 
-Keep the ERD performance indexes. Add:
+Keep the ERD performance indexes. Add: 
 
 | Table | Columns | Why |
 |---|---|---|

@@ -15,7 +15,14 @@ These items are unresolved. Do not invent values for them during implementation.
 | Q9 | Dashboard "soon" and "deadline approaching" windows? | Concept section 11.1 uses those words without numbers. | Leave the two lists out of the verified dashboard until you set the windows. Delivery-today and pending-review can be built now. | Dashboard is only partly specified. |
 | Q10 | Customer language for jobs? | Expiry and reminder text need a locale. Jobs use the default locale. | Add a user preference column only if you want per-customer job language. | Job messages are Arabic unless the default changes. |
 | Q11 | Should delivered-and-refunded lines leave the dues report? | The concept counts delivered goods and does not mention refunds. | Leave refunds in the report until you decide. | Dues can include refunded value. |
-| Q12 | Should cash become `paid` automatically at `delivered`? | The concept does not say when cash is marked paid. | An admin sets `paid`. | Cash can stay `unpaid` after delivery until staff act. |
 | Q13 | Health endpoint? | The endpoint list has no health route. | Probe `GET /settings/public` until you approve a health route. | CD smoke check uses a public settings route. |
 
 The standalone Claude audit report was not supplied. Findings that the OpenAPI file already lists were checked against the concept and the ERD. Items closed by the ADRs are not repeated here.
+
+## Resolved questions
+
+| Id | Decision | Recorded in |
+|---|---|---|
+| Q12 | Cash on delivery is not marked paid automatically at `delivered`; an admin marks it when cash is collected. | `BUSINESS_LOGIC.md`, ADR-013 |
+| Q14 | Reuse `PATCH /admin/orders/{orderId}` with optional `payment_status: paid`, valid only for cash-on-delivery orders. | ADR-013, `swagger.yaml` |
+| Q15 | Product holders may read category and season reference lists; writes still require `categories`. | ADR-010, `USER_ROLES_AND_PERMISSIONS.md`, `swagger.yaml` |

@@ -4,12 +4,12 @@ Foundation comes before features that depend on it. Do not start a feature whose
 
 ## Phase 0 — Foundation
 
-- Convert the scaffold from ESM and Vitest to CommonJS and Jest.
+- Keep the scaffold on native ESM and Vitest. Confirm `package.json` uses `type: module`, TypeScript uses NodeNext, and relative imports use `.js` suffixes.
 - Pin the versions in [TECH_STACK.md](../engineering/TECH_STACK.md) and re-check patches on that day.
 - Extend configuration, the error filter, and the Arabic and English message map.
 - Add TypeORM migrations setup with `synchronize: false`.
 - Register Redis, BullMQ, and the throttler.
-- Checkpoint: unit test runs on Jest. The application boots with PostgreSQL and Redis. No feature is Verified yet.
+- Checkpoint: unit tests run on Vitest. The application boots with PostgreSQL and Redis. No feature is Verified yet.
 
 ## Phase 1 — Identity and reference data
 

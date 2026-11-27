@@ -19,6 +19,7 @@ Use stable codes. Add a code only when a feature needs one, and add both Arabic 
 | `CART_CONFLICT` | 422 | Channel, grandma, or scheduling mix is illegal |
 | `OUT_OF_STOCK` | 409 | Reservation failed |
 | `PAYMENT_WINDOW_CLOSED` | 409 | Deadline passed |
+| `ADDRESS_LIMIT_REACHED` | 409 | Customer already has five active saved addresses; Arabic: `وصلت إلى الحد الأقصى وهو 5 عناوين نشطة.` English: `You can save up to 5 active addresses.` |
 
 The filter logs 5xx with the request id and does not put the exception message in the response. 4xx messages come from the localization catalog.
 

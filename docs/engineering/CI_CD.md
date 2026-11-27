@@ -16,8 +16,8 @@ CI does not deploy.
 1. Install with `npm ci` on Node.js 26 Active LTS.
 2. Prettier check and oxlint.
 3. TypeScript build.
-4. Unit tests.
-5. Integration and e2e tests against PostgreSQL 19 and Redis. The job fails if those services are not provided.
+4. Unit tests (`npm run test:cov`, using Vitest).
+5. Integration and E2E tests (`npm run test:e2e`) against PostgreSQL 19 and Redis. The job fails if those services are not provided.
 6. `npm audit` at high severity or above.
 7. Migration check: migrations apply on an empty database.
 
@@ -25,7 +25,7 @@ CI does not deploy.
 
 CD starts only after the host is chosen.
 
-1. Build the CommonJS output.
+1. Build the native ESM output (NodeNext).
 2. Back up the database.
 3. Run migrations once.
 4. Start the new version.

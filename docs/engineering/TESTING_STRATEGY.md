@@ -1,6 +1,6 @@
 # Testing strategy
 
-Jest is the runner. Tests live beside the code as `*.spec.ts`. End-to-end tests live in `test/`. The scaffold Vitest files are replaced, not kept beside Jest.
+Vitest is the only runner. Tests live beside the code as `*.spec.ts`. End-to-end tests live in `test/`. Keep `vitest.config.ts` for unit/integration tests and a dedicated `vitest.config.e2e.ts` for E2E tests. Import `describe`, `it`, `expect`, and `vi` explicitly from `vitest`; do not rely on globals. Use `vi.fn`, `vi.spyOn`, and `vi.mock` for test doubles.
 
 ## Layers
 
@@ -10,7 +10,7 @@ Jest is the runner. Tests live beside the code as `*.spec.ts`. End-to-end tests 
 | Integration | Transactions, locks, migrations, webhook idempotency, expiry | PostgreSQL and Redis provided by the environment |
 | E2E | Register and login, regular checkout, shipping approval and pay, subscription activation, permission denial | same |
 
-Do not require Docker. The test script reads `DATABASE_URL` and `REDIS_URL`. If they are absent, integration tests fail with a clear message. They do not skip silently.
+Do not require Docker. The Vitest scripts are `test: "vitest run"`, `test:watch: "vitest"`, `test:cov: "vitest run --coverage"`, and `test:e2e: "vitest run --config ./vitest.config.e2e.ts"`. The test script reads `DATABASE_URL` and `REDIS_URL`. If they are absent, integration tests fail with a clear message. They do not skip silently.
 
 ## Required cases before Verified
 
@@ -22,6 +22,7 @@ Each feature file lists its own cases. The payment and order features additional
 - Customer A cannot read customer B's order.
 - Admin without `orders` receives 403.
 - Arabic and English error messages for one validation failure, same code and status.
+- Address-book limit: fifth active address succeeds; sixth returns `409 ADDRESS_LIMIT_REACHED`; soft-deleted historical rows are excluded; concurrent create requests never produce more than five active rows.
 
 ## Data
 

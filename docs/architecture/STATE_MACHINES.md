@@ -62,6 +62,8 @@ Admin fulfillment moves are one step forward on the path for that `order_type`. 
 
 `failed` → `paid` on a later successful attempt
 
+A cash-on-delivery order may transition `unpaid` → `paid` only when an admin records cash collection through `PATCH /admin/orders/{orderId}` (ADR-013).
+
 `paid` → `refunded` when an admin records a refund
 
 A partial refund still uses `refunded`, because the concept has no separate partial value. The `Refund.amount` holds the figure.

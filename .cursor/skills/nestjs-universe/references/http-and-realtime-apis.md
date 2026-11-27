@@ -1,7 +1,6 @@
 # HTTP
 
-- Routes stay on the list in `docs/api/API_ENDPOINTS.md`.
-- Apply the deltas in `docs/api/API_CONTRACT_DELTAS.md`, including `limit` instead of `page_size`.
+- Routes and schemas come from `docs/api/swagger.yaml` (v2.2.0). It already uses `limit` instead of `page_size`.
 - The global filter emits the error envelope in `docs/api/ERROR_HANDLING.md`.
 - Map PostgreSQL `23505` to 409.
 - Add Swagger decorators that match the implemented contract.

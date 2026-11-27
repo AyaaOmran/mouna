@@ -12,6 +12,8 @@ Phone uniqueness is required. A canonical phone format is not defined. Store the
 
 Disabled users cannot authenticate.
 
+The customer address book allows at most **5 active saved addresses** per customer (`deleted_at IS NULL`). Soft-deleted addresses retained for order/subscription history do not count. This cap does not apply to recipient address data entered for event, gift, or external-shipping orders. Creating a sixth active saved address returns `409 ADDRESS_LIMIT_REACHED`.
+
 ## Catalog rules
 
 - Public lists return `active` products and `active` grandmas only. Draft and hidden products, and pending or unavailable grandmas, are admin-only.
@@ -58,7 +60,7 @@ A failed attempt leaves a regular electronic order in `awaiting_payment` with `p
 
 Expiry and the success webhook lock the order or subscription row. If the row is already cancelled, a late success does not reopen it. The transaction can be `succeeded` while the order stays `cancelled`. Staff record a manual refund.
 
-Cash on delivery becomes `paid` only when an admin marks it paid. The concept does not say this happens automatically at `delivered`.
+Cash on delivery becomes `paid` only when an admin marks it paid through the existing `PATCH /admin/orders/{orderId}` route (`payment_status: paid`). The field is valid only for `cash_on_delivery` orders. The concept does not say this happens automatically at `delivered`.
 
 ## Cancellation and refunds
 
@@ -69,9 +71,9 @@ Cash on delivery becomes `paid` only when an admin marks it paid. The concept do
 - `preparing` and later statuses are admin-only.
 - Rejection is allowed from `pending` only, and requires a reason.
 - Payment-timeout cancellation is done by the expiry job, with the reason stored as the Arabic concept phrase for payment timeout, localized for the customer message.
-- Refund rows are admin-recorded. Amount is entered by the admin. A refund has `order_id` or `subscription_id`, never both, and never neither.
+- Refund rows are admin-recorded. The admin must enter both the amount and a non-empty reason. A refund has `order_id` or `subscription_id`, never both, and never neither.
 
-Subscription cancellation: the customer creates a request. Admin approval sets the subscription to `cancelled`, cancels remaining `scheduled` deliveries, and requires the admin to enter a refund amount in the same action. Rejection leaves the subscription `active`. There is no automatic proration.
+Subscription cancellation: the customer creates a request. Admin approval sets the subscription to `cancelled`, cancels remaining `scheduled` deliveries, and requires the admin to enter the refund amount and a non-empty reason in the same action. Rejection leaves the subscription `active`. There is no automatic proration.
 
 ## Subscription dates
 

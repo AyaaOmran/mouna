@@ -40,9 +40,15 @@ A single resource is the object itself. A list is:
 | 401 | Missing or invalid authentication |
 | 403 | Authenticated admin without the section permission |
 | 404 | Missing resource, including another customer's resource |
-| 409 | Illegal status change, uniqueness conflict, stale price, stock conflict |
+| 409 | Illegal status change, uniqueness conflict, stale price, stock conflict, or `ADDRESS_LIMIT_REACHED` when the customer already has five active saved addresses |
 | 422 | Validation or business input rejection |
 | 429 | Rate limit |
+
+## Admin section permissions
+
+`x-required-permission` names the access rule checked by an admin route. A scalar section name requires that section. The special scalar `any-admin` means any authenticated admin and is used only by the dashboard; it is not a grantable `Permission` section. An array lists alternative sections (OR, not AND) for a read-only view; the service must still scope the returned rows to the relevant view. This applies to the event/gift order views and to the category/season reference lists used by product editors. Mutations continue to require their owning section.
+
+`PATCH /admin/orders/{orderId}` is the existing update route. It may update `delivery_responsible_note`, set `payment_status` to `paid` for a cash-on-delivery order, or do both. It does not create a new route.
 
 ## Validation
 
@@ -50,7 +56,7 @@ Global `ValidationPipe` with whitelist, forbid non-whitelisted, and transform. D
 
 ## Auth header
 
-`Authorization: Bearer <access token>`. Refresh uses the body field already defined by the auth flow. Document the refresh request in Swagger when the auth feature is implemented. The original OpenAPI file left token transport open. The approved design is bearer access tokens plus an opaque refresh token on login, refresh, and logout.
+`Authorization: Bearer <access token>`. `POST /auth/refresh` and `POST /auth/logout` take `{ "refresh_token": "..." }` in the body (`RefreshTokenRequest` in `swagger.yaml`). Login, registration verification, and refresh return `access_token` and `refresh_token`. The approved design is bearer access tokens plus an opaque refresh token (ADR-008).
 
 ## Language
 

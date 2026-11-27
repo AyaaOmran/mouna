@@ -6,7 +6,7 @@ alwaysApply: false
 
 # Backend
 
-- CommonJS. Do not append `.js` to relative imports.
+- ESM only. Use `"type": "module"` with TypeScript `NodeNext` module and resolution settings. Relative imports must use the emitted `.js` suffix (for example, `./users.service.js`). Do not use `require`, `module.exports`, `__dirname`, or `__filename`; use ESM imports/exports and `import.meta.dirname` (Node 26) or `fileURLToPath(import.meta.url)` when a file path is needed.
 - Controllers validate and map DTOs. Services own rules. Do not return TypeORM entities.
 - Throw coded exceptions from `docs/api/ERROR_HANDLING.md`.
 - Use `class-validator` DTOs. Do not add Zod or a second schema library.

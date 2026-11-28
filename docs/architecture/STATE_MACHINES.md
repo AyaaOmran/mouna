@@ -1,70 +1,72 @@
 # State machines
 
-Enums are lowercase in the API and database. Labels below match the concept.
+Enums are lowercase in the API and database. Status values are technical names; the customer sees the Arabic label (`spec §11`). The approved set is in [ADR-020](ARCHITECTURE_DECISIONS.md#adr-020-payment-with-order_id-and-the-simplified-order-status-set).
 
 ## Order status
 
 ```text
 pending
-awaiting_payment
 confirmed
 preparing
 ready
 out_for_delivery
-shipped
-in_transit
 delivered
-rejected
 cancelled
 ```
 
-Terminal states: `delivered`, `rejected`, `cancelled`.
+Terminal states: `delivered`, `cancelled`.
+
+There is no `awaiting_payment`, `shipped`, `in_transit`, or `rejected` status. Rejection is a `cancelled` order with a `cancel_reason` (`spec §10.2`).
 
 ### Regular cash
 
 `pending` → `confirmed` → `preparing` → `ready` → `out_for_delivery` → `delivered`
 
-`pending` → `rejected` | `cancelled`
+`pending` → `cancelled` (rejection with reason, or customer cancellation)
 
-`confirmed` → `cancelled` by the customer, or by an admin
+`confirmed` → `cancelled` by the customer or by an admin
 
 ### Regular electronic
 
-`awaiting_payment` → `pending` on payment success → `confirmed` → same fulfillment path as cash
+`pending` / `unpaid` → payment success sets `payment_status = paid`; the order stays `pending`
 
-`awaiting_payment` → `cancelled` on deadline
+`pending` / `paid` → `confirmed` → the same fulfillment path as cash
 
-`pending` → `rejected` | `cancelled`
+A failed attempt leaves the order `pending` / `unpaid`. The customer may start another transaction. There is no order payment deadline and no expiry.
 
 ### Event
 
-`pending` → `awaiting_payment` → `confirmed` → `preparing` → `ready` → `out_for_delivery` → `delivered`
+`pending` / `unpaid` → payment success sets `paid`, still `pending`
 
-`pending` → `rejected` | `cancelled`
+`pending` / `paid` → `confirmed` → `preparing` → `ready` → `out_for_delivery` → `delivered`
 
-`awaiting_payment` → `cancelled`
+`pending` → `cancelled`
+
+An event order cannot move to `confirmed` while `unpaid` (`spec §10.2`, `§15`).
 
 ### Shipping
 
-`pending` → `awaiting_payment` → `confirmed` → `preparing` → `shipped` → `in_transit` → `delivered`
+`pending` / `unpaid` → payment success sets `paid`, still `pending`
 
-`pending` → `rejected` | `cancelled`
+`pending` / `paid` → `confirmed` → `preparing` → `ready` → `out_for_delivery` (handed to the carrier, company and tracking number entered) → `delivered`
 
-`awaiting_payment` → `cancelled`
+`pending` → `cancelled`
 
-Admin fulfillment moves are one step forward on the path for that `order_type`. Skipping a step or using `shipped` on a local order is a 409. Every accepted change writes `OrderStatusHistory`. System expiry uses a null actor.
+A shipping order cannot move to `confirmed` while `unpaid`. `out_for_delivery` is the only hand-over state (`spec §9.2`).
+
+Admin fulfillment moves are one step forward on the path for that `order_type`. Skipping a step is a 409. Every accepted change writes `OrderStatusHistory`.
 
 `is_scheduled` does not add a status. Staff move a scheduled order to `preparing` when preparation starts. The system does not move it by the clock in v1.
 
 ## Payment status
 
-`unpaid` → `paid` | `failed`
+`unpaid` → `paid`
 
-`failed` → `paid` on a later successful attempt
+`paid` → `refunded`
+
+There is no `failed` value on the order. A failed attempt is recorded on `PaymentTransaction`; the order stays `unpaid` and a retry creates a new transaction (`spec §10.3`; ADR-020).
 
 A cash-on-delivery order may transition `unpaid` → `paid` only when an admin records cash collection through `PATCH /admin/orders/{orderId}` (ADR-013).
-
-`paid` → `refunded` when an admin records a refund
 
 A partial refund still uses `refunded`, because the concept has no separate partial value. The `Refund.amount` holds the figure.
 
@@ -80,6 +82,8 @@ No transition out of `succeeded` or `failed`. A retry creates a new row.
 
 `active` → `completed` | `cancelled`
 
+Only subscriptions keep a payment deadline and the `expire-subscription` job.
+
 ## Subscription delivery
 
 `scheduled` → `preparing` → `delivered`
@@ -94,4 +98,4 @@ No transition out of `succeeded` or `failed`. A retry creates a new row.
 
 ## Concurrency lock
 
-Expiry and webhook handlers take a row lock on the order or subscription inside one transaction, then re-read status. A cancelled row is not moved back to `confirmed` or `active`.
+The payment webhook and the subscription expiry handler take a row lock on the order or subscription inside one transaction, then re-read status. A cancelled row is not moved back to `confirmed` or `active`. A late payment success on a cancelled order leaves the order cancelled; staff record a manual refund.

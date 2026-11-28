@@ -1,6 +1,6 @@
 # Business logic
 
-Normative behavior for implementation. Concept section numbers point at the preserved Arabic file. ADR overrides are marked.
+Normative behavior for implementation. The Arabic v2 spec is the source for product, website, and dashboard behavior; ADRs govern technical decisions. This file is the English working summary. Section numbers in `spec §N` refer to the v2 spec preserved under `originals/`.
 
 ## Identity
 
@@ -18,10 +18,12 @@ The customer address book allows at most **5 active saved addresses** per custom
 
 - Public lists return `active` products and `active` grandmas only. Draft and hidden products, and pending or unavailable grandmas, are admin-only.
 - Availability shown to customers is computed: in stock, made to order, or unavailable. It is not a stored status.
-- Grandma rating is the average of published product reviews. Customers do not rate a grandma directly.
+- Grandma `avg_rating` is the average of the ratings of her **delivered orders** (ADR-018). Customers do not rate a grandma directly.
+- Product `rating_avg` is the average of the ratings of delivered orders that contain the product. The product card shows it and the `rating` sort uses it (`spec §3.2`).
+- Review comments are stored but not exposed as a public list. The product page has no reviews list in the spec (`spec §3.4`).
 - Season status is computed from start and end dates: upcoming, active, ended.
 - Made to order requires `lead_time_days > 0` and `allow_scheduling = true`.
-- `channel_shipping` cannot be set when the category is cooked food.
+- `channel_shipping` is the single shipping-eligibility field. It cannot be set when the category is cooked food (`spec §9.2`).
 - A box can be marked shippable only when every content item is shippable.
 - Exactly one grandma can be grandma of the month.
 - Home banners and static pages are not database content.
@@ -33,9 +35,9 @@ The customer address book allows at most **5 active saved addresses** per custom
 - Products are active. Ready items and boxes have enough stock. Made-to-order items need no stock quantity.
 - Prices match the current catalog. A mismatch returns 409 with a fresh preview. The order is created only after the client accepts the new total.
 - All items match the requested channel and the same grandma. That grandma is active.
-- Local orders use an active delivery zone. Shipping orders use an active country and a preset fee. Event dates respect the longest lead time.
+- Local orders use an active delivery zone with its fixed `fee`. Shipping orders use an active country with its fixed `fee`.
 - A gift is rejected on an event order.
-- A scheduled order's date is after today plus the longest lead time, on an open delivery slot, and not on a holiday.
+- A scheduled order's date is at or after `today + the longest lead_time_days` in the order, and the chosen period is deliverable under the fixed rule in ADR-021. There is no holiday check and no capacity check.
 
 Preview creates nothing and reserves nothing.
 
@@ -43,22 +45,26 @@ Preview creates nothing and reserves nothing.
 
 On order creation, lock ready-product and box rows with `SELECT ... FOR UPDATE`, then decrement stock, and set `Order.inventory_held`. Made-to-order lines do not change stock. This includes shipping and event orders while they are still `pending`.
 
-Release the same quantities once when the order is rejected, cancelled, or expired, then clear `inventory_held`. A second release is a no-op. Subscription deliveries do not decrement box stock in v1. Capacity stays a manual admin check, as in the concept.
+Release the same quantities once when the order is cancelled, then clear `inventory_held`. A second release is a no-op. Subscription deliveries do not decrement box stock in v1. Capacity stays a manual admin check.
 
 ## Payments
 
 Server computes the amount. The client cannot submit an amount.
 
+Payment is taken inside Checkout before the order is submitted (`spec §5`). Because `PaymentTransaction.order_id` is required, the order row is created first as `pending` / `unpaid` (ADR-020).
+
 | Case | Create | After successful payment |
 |---|---|---|
 | Regular cash | `pending`, `unpaid`, stock held, no payment transaction | Admin confirms to `confirmed` |
-| Regular electronic | `awaiting_payment`, `unpaid`, stock held, deadline set | `pending`, `paid`. Admin still confirms |
-| Shipping or event | `pending`, `unpaid`, stock held | After admin moves it to `awaiting_payment` and payment succeeds: `confirmed`, `paid` |
+| Regular electronic | `pending`, `unpaid`, stock held | `pending`, `paid`. Admin still confirms |
+| Shipping or event | `pending`, `unpaid`, stock held | `pending`, `paid`. Admin confirms only when paid |
 | Subscription | `pending_payment`, no stock change | `active`, generate delivery rows in the same transaction |
 
-A failed attempt leaves a regular electronic order in `awaiting_payment` with `payment_status = failed` so the customer can start another transaction until the deadline.
+A failed attempt records a `failed` `PaymentTransaction` and leaves the order `pending` / `unpaid`. The customer may start another transaction. The order `payment_status` has no `failed` value.
 
-Expiry and the success webhook lock the order or subscription row. If the row is already cancelled, a late success does not reopen it. The transaction can be `succeeded` while the order stays `cancelled`. Staff record a manual refund.
+The success webhook locks the order or subscription row. If the row is already cancelled, a late success does not reopen it. The transaction can be `succeeded` while the order stays `cancelled`. Staff record a manual refund.
+
+There is no order payment deadline and no order-expiry job. Only subscriptions keep a payment deadline (`spec §5`; ADR-020).
 
 Cash on delivery becomes `paid` only when an admin marks it paid through the existing `PATCH /admin/orders/{orderId}` route (`payment_status: paid`). The field is valid only for `cash_on_delivery` orders. The concept does not say this happens automatically at `delivered`.
 
@@ -67,13 +73,16 @@ Cash on delivery becomes `paid` only when an admin marks it paid through the exi
 `can_cancel` and `cancel_deadline` are computed and are not stored.
 
 - Regular or scheduled: the customer can cancel in `pending` or `confirmed`.
-- Shipping or event: the customer can cancel in `pending` or `awaiting_payment`.
+- Shipping or event: the customer can cancel in `pending` only.
 - `preparing` and later statuses are admin-only.
-- Rejection is allowed from `pending` only, and requires a reason.
-- Payment-timeout cancellation is done by the expiry job, with the reason stored as the Arabic concept phrase for payment timeout, localized for the customer message.
+- Rejection is allowed from `pending` only, requires a reason, and sets `cancelled` with `cancel_reason`. There is no `rejected` status.
 - Refund rows are admin-recorded. The admin must enter both the amount and a non-empty reason. A refund has `order_id` or `subscription_id`, never both, and never neither.
 
 Subscription cancellation: the customer creates a request. Admin approval sets the subscription to `cancelled`, cancels remaining `scheduled` deliveries, and requires the admin to enter the refund amount and a non-empty reason in the same action. Rejection leaves the subscription `active`. There is no automatic proration.
+
+## Reviews
+
+One review per `delivered` order (ADR-018). The customer submits `POST /orders/{orderId}/review` with a rating from 1 to 5 and an optional comment of at most 2000 characters. The review is published immediately. There is no moderation, edit, or delete route. Subscription deliveries are not reviewable because they are not orders.
 
 ## Subscription dates
 
@@ -91,6 +100,6 @@ Each delivered subscription delivery adds `plan subtotal / deliveries_count` to 
 
 ## Notifications
 
-Stable `type` codes: `order_status_changed`, `payment_requested`, `order_rejected`, `order_cancelled_payment_timeout`, `subscription_delivery_upcoming`, `subscription_activated`, `subscription_ended`.
+Stable `type` codes: `order_status_changed`, `payment_requested`, `order_rejected`, `subscription_delivery_upcoming`, `subscription_activated`, `subscription_ended`.
 
-The message text is localized at insert time. SMS in v1 is OTP only.
+`order_rejected` describes the event of an admin rejecting a `pending` order; the stored order status is `cancelled` with a reason. The message text is Arabic and is stored at insert time (ADR-017). SMS in v1 is OTP only.

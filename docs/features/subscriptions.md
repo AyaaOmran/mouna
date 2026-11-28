@@ -10,11 +10,11 @@ In: plans, subscribe, list, cancel request, admin deliveries. Out: putting deliv
 
 ## 3. User roles
 
-Public reads active plans. Customer manages own subscriptions. Admin with `subscriptions` manages plans, requests, and deliveries.
+Public reads active plans. Customer manages own subscriptions. Admin with `subscriptions.*` keys manages plans, requests, and deliveries.
 
 ## 4. Permissions
 
-`subscriptions`.
+`subscriptions.view` for reads; `subscriptions.manage_plans` for plan writes; `subscriptions.view_deliveries` for delivery reads; `subscriptions.update_delivery_status` for delivery status, cancellation decisions, and subscription refunds.
 
 ## 5. Business rules
 
@@ -56,7 +56,7 @@ Expire unpaid subscriptions. Reminder 24 hours before each delivery.
 
 ## 13. Edge cases
 
-A seasonal plan may also point at a Season for catalog grouping. That link does not rebuild dates. Holidays do not move generated dates.
+A seasonal plan may also point at a Season for catalog grouping. That link does not rebuild dates. Generated dates never shift for holidays, because there is no holiday calendar.
 
 ## 14. Failure scenarios
 

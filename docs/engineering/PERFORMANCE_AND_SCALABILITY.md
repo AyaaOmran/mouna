@@ -5,7 +5,7 @@ Targets are approved in ADR-011. They are goals for measurement, not current res
 ## Database
 
 - Use the indexes in the ERD and in `DATABASE_DESIGN.md`.
-- Paginate every list. Whitelist sort fields. The product list sort values already in OpenAPI are `most_ordered`, `newest`, `price_asc`, `price_desc`, and `rating`.
+- Paginate every list. Whitelist sort fields and end every order with an `id` tie-breaker. The product list sort values are `most_ordered`, `newest`, `price_asc`, `price_desc`, and `rating`.
 - Load relations required by the DTO in the same query. Do not loop queries per row.
 - Select only columns required by the response DTO. Every new index beyond the ERD and database-design set needs a concrete query shape and a plan reviewed against representative data; avoid redundant and low-selectivity indexes.
 - Lock stock rows in primary-key order.

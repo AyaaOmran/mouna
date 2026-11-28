@@ -4,11 +4,11 @@ Each module owns its tables and its admin and customer controllers. A separate "
 
 | Module | Owns | Talks to |
 |---|---|---|
-| `IdentityModule` | User, Permission, UserPermission, RefreshToken, OtpChallenge, Address, ActivityLog | Delivery zones for address validation, Notifications, OTP queue |
+| `IdentityModule` | User, Permission, UserPermission, RefreshToken, OtpChallenge, Address, ActivityLog | Notifications, OTP queue |
 | `CatalogModule` | Category, Season, Product, ProductImage, Box, BoxItem | Grandmas |
 | `GrandmasModule` | Grandma, Recipe, VoiceMessage | Catalog for public product lists by grandma |
-| `DeliveryModule` | DeliveryZone, DeliveryPeriod, DeliverySlot, Holiday, DeliverySetting, ShippingCountry, ShippingCompany | none |
-| `OrdersModule` | Order, OrderItem, shipping, event, and gift details, OrderStatusHistory; `OrdersGateway` | Catalog stock, Delivery, Payments, Notifications |
+| `DeliveryModule` | DeliveryZone, DeliveryPeriod, DeliverySetting, ShippingCountry (seeded) | none |
+| `OrdersModule` | Order, OrderItem, OrderShippingDetail, event and gift details, OrderStatusHistory; `OrdersGateway` | Catalog stock, Delivery, Payments, Notifications |
 | `PaymentsModule` | PaymentMethod, PaymentTransaction, Refund | Orders, Subscriptions, gateway interface |
 | `SubscriptionsModule` | Plan, Subscription, Delivery, CancellationRequest | Catalog, Delivery, Payments, Notifications |
 | `NotificationsModule` | Notification | queue for reminders |
@@ -32,7 +32,6 @@ Public and admin controllers live beside the feature. Routes and Swagger decorat
 | Processor | Module |
 |---|---|
 | OTP sender | Identity |
-| Order expiry | Orders |
 | Subscription expiry | Subscriptions |
 | Delivery reminder | Notifications |
 

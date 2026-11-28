@@ -7,7 +7,7 @@ Socket.IO supplements the REST API for order-status monitoring. REST remains the
 - Namespace: `/orders`.
 - A client supplies the existing access token in the Socket.IO handshake authentication payload. The gateway verifies it before accepting a subscription.
 - The client sends `order.subscribe` with `{ "order_id": "<integer id>" }`.
-- A customer may subscribe only to an order they own. An admin receives the same scoped authorization as the HTTP order-detail route: `orders`, or the applicable restricted `events`/`gifts` read view. Unauthorized and missing orders are not distinguishable.
+- A customer may subscribe only to an order they own. An admin receives the same scoped authorization as the HTTP order-detail route: `orders.view`. Unauthorized and missing orders are not distinguishable.
 - The gateway accepts no command that creates, changes, pays for, or cancels an order.
 
 ## Server event

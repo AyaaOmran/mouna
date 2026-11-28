@@ -9,12 +9,12 @@ Security is part of each feature file. This is the system checklist. Nothing her
 - Refresh tokens: 32 random bytes, stored as SHA-256, rotated, revoked on logout. Reuse of a revoked token revokes the user's remaining refresh tokens.
 - OTP stored as a hash. Constant-time compare. Attempt counter. No OTP in logs or responses.
 - Registration does not accept a client-supplied role.
-- Socket.IO order monitoring authenticates the handshake with the same access-token rules as HTTP. Room subscription rechecks customer ownership or the scoped admin order-read permission. The gateway accepts no state-changing command.
+- Socket.IO order monitoring authenticates the handshake with the same access-token rules as HTTP. Room subscription rechecks customer ownership or `orders.view`. The gateway accepts no state-changing command.
 
 ## Authorization
 
 - Global auth guard. Public routes are explicit.
-- Admin routes declare one section permission from the catalogue.
+- Admin routes declare one function key from the catalogue.
 - Customer queries include `customer_id = current user`. Missing rows are 404.
 
 ## Input and data

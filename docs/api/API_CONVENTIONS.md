@@ -20,35 +20,37 @@ A single resource is the object itself. A list is:
 
 `limit` replaces the OpenAPI name `page_size`. Default 20. Values below 1 or above 100 are 422.
 
+Every list has a whitelisted `sort` or a fixed server order and ends with an `id` tie-breaker: `id DESC` for time-ordered lists, `id ASC` for name-ordered lists. `page > total_pages` returns `data: []` with correct metadata. The allow-list of unpaginated collections is in ADR-022.
+
 ## Errors
 
 ```json
 {
   "error": {
     "code": "VALIDATION_ERROR",
-    "message": "localized text",
-    "details": [{ "field": "phone", "code": "IS_NOT_EMPTY", "message": "localized text" }],
+    "message": "Arabic text",
+    "details": [{ "field": "phone", "code": "IS_NOT_EMPTY", "message": "Arabic text" }],
     "request_id": "uuid"
   }
 }
 ```
 
-`message` is the only localized part. `code` and `field` stay stable. 500 responses use a generic message and log the stack with the request id. The scaffold filter in `src/common/filters/http-exception.filter.ts` is the starting shape. Extend it for localization. Do not replace the envelope.
+`message` is Arabic. `code` and `field` stay stable English technical names. 500 responses use a generic Arabic message and log the stack with the request id. The scaffold filter in `src/common/filters/http-exception.filter.ts` is the starting shape. Extend it to resolve the Arabic catalog. Do not replace the envelope.
 
 | Status | Use |
 |---|---|
 | 401 | Missing or invalid authentication |
-| 403 | Authenticated admin without the section permission |
+| 403 | Authenticated admin without the function key |
 | 404 | Missing resource, including another customer's resource |
 | 409 | Illegal status change, uniqueness conflict, stale price, stock conflict, or `ADDRESS_LIMIT_REACHED` when the customer already has five active saved addresses |
 | 422 | Validation or business input rejection |
 | 429 | Rate limit |
 
-## Admin section permissions
+## Admin function permissions
 
-`x-required-permission` names the access rule checked by an admin route. A scalar section name requires that section. The special scalar `any-admin` means any authenticated admin and is used only by the dashboard; it is not a grantable `Permission` section. An array lists alternative sections (OR, not AND) for a read-only view; the service must still scope the returned rows to the relevant view. This applies to the event/gift order views and to the category/season reference lists used by product editors. Mutations continue to require their owning section.
+`x-required-permission` names the function key checked by an admin route. The catalogue is the 26 keys in [USER_ROLES_AND_PERMISSIONS.md](../product/USER_ROLES_AND_PERMISSIONS.md) and ADR-019. A scalar key requires that key. An array lists alternative keys (OR, not AND). The special `any-admin` value is not used. Mutations require their specific key.
 
-`PATCH /admin/orders/{orderId}` is the existing update route. It may update `delivery_responsible_note`, set `payment_status` to `paid` for a cash-on-delivery order, or do both. It does not create a new route.
+`PATCH /admin/orders/{orderId}` is the existing update route. It may update `delivery_responsible_note`, set `payment_status` to `paid` for a cash-on-delivery order, or do both. It requires `orders.manage_payment_shipping`. It does not create a new route.
 
 ## Validation
 
@@ -60,7 +62,7 @@ Global `ValidationPipe` with whitelist, forbid non-whitelisted, and transform. D
 
 ## Language
 
-`Accept-Language: ar` or `en`. See [LOCALIZATION.md](LOCALIZATION.md).
+Arabic only. The website and dashboard are Arabic and RTL, with no language switcher. There is no `Accept-Language` header and no second message catalog (ADR-017). Field names, enums, status codes, and error codes stay English technical names.
 
 ## Swagger
 
@@ -68,4 +70,4 @@ Served at `/api/v1/docs`, which matches the current `main.ts` setup with the glo
 
 ## Idempotency
 
-`POST /payments/webhook` is idempotent on `gateway_reference`. Clients retry order creation only when they did not receive a response. A duplicate unpaid `awaiting_payment` order is possible if the client repeats the POST. Do not add an idempotency-key header until a later ADR. Document this limitation on the orders feature.
+`POST /payments/webhook` is idempotent on `gateway_reference`. Clients retry order creation only when they did not receive a response. A duplicate `pending` order is possible if the client repeats the POST. Do not add an idempotency-key header until a later ADR. Document this limitation on the orders feature.

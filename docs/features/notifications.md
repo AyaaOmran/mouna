@@ -18,7 +18,7 @@ Ownership. 404 for another user id.
 
 ## 5. Business rules
 
-Types are the stable codes in BUSINESS_LOGIC. Message text is localized at insert time. Status is `unread` or `read`.
+Types are the stable codes in BUSINESS_LOGIC. Message text is Arabic and is stored at insert time. Status is `unread` or `read`.
 
 Normative detail: [BUSINESS_LOGIC.md](../product/BUSINESS_LOGIC.md) and [STATE_MACHINES.md](../architecture/STATE_MACHINES.md).
 
@@ -64,7 +64,7 @@ If the reminder job fails, the sweep retries scheduling. The state change that a
 
 ## 15. Acceptance criteria
 
-A payment-timeout cancellation creates `order_cancelled_payment_timeout`. Marking read is idempotent.
+An order rejection creates `order_rejected`. Marking read is idempotent.
 
 ## 16. Testing requirements
 
@@ -82,4 +82,4 @@ No implementation work has been done. No tests have been executed.
 
 ## 19. Known limitations
 
-Background jobs use the default locale until a user preference exists.
+Arabic only. There is no locale preference and no fallback.

@@ -24,7 +24,7 @@ This skill is the MONAT profile of the original `nestjs-universe` skill. The unt
 - No `@Global()` feature modules and no `forwardRef`.
 - Global `ValidationPipe` with whitelist and forbid non-whitelisted.
 - Map responses to DTOs. Never return password, refresh-token, or OTP hashes.
-- Global auth guard plus `@Public()`. Admin permission guard uses the section catalogue.
+- Global auth guard plus `@Public()`. Admin permission guard uses one of the 26 function keys in `docs/product/USER_ROLES_AND_PERMISSIONS.md` (ADR-019).
 - Another customer's id is 404.
 - Validate env vars at startup.
 - Migrations run before traffic, not on boot.

@@ -10,11 +10,11 @@ In: list and detail. Out: editing a customer, disabling them. Disabling is not i
 
 ## 3. User roles
 
-Admin with `customers`.
+Admin with `customers.*` keys.
 
 ## 4. Permissions
 
-`customers`.
+`customers.view` for the list and profile; `customers.view_addresses` for addresses; `customers.view_orders_subscriptions` for order and subscription history.
 
 ## 5. Business rules
 

@@ -9,7 +9,7 @@ alwaysApply: false
 - Access tokens last 15 minutes. Store refresh tokens and OTPs only as hashes.
 - Do not log passwords, tokens, OTP codes, or webhook secrets.
 - Customer queries filter by the authenticated user. A foreign id is 404.
-- Admin routes require the section permission from `docs/product/USER_ROLES_AND_PERMISSIONS.md`.
+- Admin routes require one of the 26 function keys from `docs/product/USER_ROLES_AND_PERMISSIONS.md` (ADR-019). `orders.view` is the scoped admin order-read key.
 - Verify the payment webhook signature before any write. Reject unsigned calls.
 - Authenticate Socket.IO handshakes before room subscription and authorize each requested order with the same ownership or scoped admin-read rule as HTTP.
 - Read `docs/engineering/SECURITY.md` before changing auth or payments.

@@ -25,4 +25,4 @@ Do not put provider secrets in the repository. Document the variable name in thi
 
 `ConfigService` is the only reader. Feature services do not read `process.env`.
 
-The currency code and default locale also exist as `SystemSetting` rows because admins can read them through the public settings endpoint. Environment variables do not override those business settings.
+The currency code and platform name also exist as `SystemSetting` rows because they are read through the public settings endpoint. There is no locale setting; the product is Arabic only (ADR-017). Environment variables do not override those business settings.

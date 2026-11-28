@@ -10,11 +10,11 @@ In: category and season writes. Out: automatic season status storage.
 
 ## 3. User roles
 
-Admins with `products` or `categories` may read the category and season lists for product forms. Only admins with `categories` may create or update these records.
+Admins with `products.view` may read the category and season lists for product forms. Only admins with `products.create_edit` may create or update these records.
 
 ## 4. Permissions
 
-Read: `products` or `categories`. Mutations: `categories`.
+Read: `products.view`. Mutations: `products.create_edit`.
 
 ## 5. Business rules
 

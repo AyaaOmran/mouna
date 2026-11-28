@@ -6,27 +6,27 @@ Foundation comes before features that depend on it. Do not start a feature whose
 
 - Keep the scaffold on native ESM and Vitest. Confirm `package.json` uses `type: module`, TypeScript uses NodeNext, and relative imports use `.js` suffixes.
 - Pin the versions in [TECH_STACK.md](../engineering/TECH_STACK.md) and re-check patches on that day.
-- Extend configuration, the error filter, and the Arabic and English message map.
+- Extend configuration, the error filter, and the Arabic message catalog.
 - Add TypeORM migrations setup with `synchronize: false`.
 - Register Redis, BullMQ, and the throttler.
 - Checkpoint: unit tests run on Vitest. The application boots with PostgreSQL and Redis. No feature is Verified yet.
 
 ## Phase 1 — Identity and reference data
 
-1. Migrations for users, permissions, OTP, refresh tokens, settings, and the English columns that those tables need.
+1. Migrations for users, permissions, OTP, refresh tokens, and settings.
 2. Authentication.
-3. Super Admin settings and permission assignment, enough to create an admin.
-4. Delivery settings.
+3. Super Admin admin management and permission assignment, enough to create an admin.
+4. Seed delivery zones, periods, countries, payment methods, and the delivery setting.
 5. Categories, seasons, grandmas, products, boxes.
 
-Checkpoint: an admin can create a shippable pantry product and a zone. Security tests for auth and permissions pass.
+Checkpoint: an admin can create a shippable pantry product and a zone exists. Security tests for auth and permissions pass.
 
 ## Phase 2 — Orders and payments
 
 1. Addresses.
 2. Preview and order creation with stock locks.
 3. Shipping, events, and gifts as part of the order transaction.
-4. Payment port, fake adapter, webhook, refunds, expiry jobs.
+4. Payment port, fake adapter, webhook, refunds, subscription expiry.
 5. Notifications inserted with status changes.
 6. Reviews.
 
@@ -43,7 +43,7 @@ Checkpoint: subscription date tests and dues fixture test pass.
 ## Phase 4 — Hardening
 
 - Migration on an empty database.
-- Locale sweep for the error catalog.
+- Arabic catalog sweep.
 - Dependency audit.
 - Backup and restore procedure written down. The restore drill waits for a host.
 
@@ -58,7 +58,7 @@ See [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md). Update the featur
 | API | Contract deltas covered by supertest |
 | Architecture | Module ownership review on the pull request |
 | Performance | Timed catalog read and order create |
-| Jobs | Expiry, reminder, and OTP tests |
+| Jobs | Subscription expiry, reminder, and OTP tests |
 | Database | Migration applies. Constraint tests for refund and stock |
 | Security | Auth, IDOR, webhook signature, throttling |
 | Testing | Required tests executed |

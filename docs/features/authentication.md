@@ -68,7 +68,7 @@ A customer exists only after OTP success. Logout rejects the old refresh token. 
 
 ## 16. Testing requirements
 
-Unit: attempt counter and hash compare. Integration: register then verify creates one user. E2E: login and logout. Both locales for `OTP_INVALID`.
+Unit: attempt counter and hash compare. Integration: register then verify creates one user. E2E: login and logout. Arabic `OTP_INVALID` message.
 
 Definition of done: [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md).
 

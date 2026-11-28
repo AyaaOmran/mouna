@@ -2,7 +2,7 @@
 
 ## 1. Feature overview
 
-Guests and customers browse categories, seasons, grandmas, products, and a public voice message.
+Guests and customers browse categories, seasons, grandmas, products, and a public voice message. The surface is Arabic only.
 
 ## 2. Scope
 
@@ -19,6 +19,8 @@ None.
 ## 5. Business rules
 
 Only active products and active grandmas. Availability, ratings, and season status are computed. Shipping and event products appear on the general list only when `channel_regular` is also true. Voice lookup uses uuid and returns audio only when status is active.
+
+Grandma `avg_rating` is the average of her delivered orders' ratings. Product `rating_avg` is the average of delivered orders containing the product. Review comments are not listed publicly.
 
 Normative detail: [BUSINESS_LOGIC.md](../product/BUSINESS_LOGIC.md) and [STATE_MACHINES.md](../architecture/STATE_MACHINES.md).
 
@@ -38,7 +40,7 @@ Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes fo
 
 ## 9. Validation
 
-Sort is one of the OpenAPI values. `page` and `limit` follow API conventions. Unknown filters are rejected.
+Sort is one of the OpenAPI values: `most_ordered`, `newest`, `price_asc`, `price_desc`, `rating`, each ending with an `id` tie-breaker. `page` and `limit` follow API conventions. Unknown filters are rejected with 422.
 
 ## 10. Security requirements
 
@@ -56,19 +58,19 @@ None.
 
 ## 13. Edge cases
 
-English fields fall back to Arabic when `*_en` is null. Hidden products return 404 on the public detail route.
+There is no English fallback; the response returns `name` only. Hidden products return 404 on the public detail route. Categories are a fixed list of three and stay unpaginated; seasons paginate.
 
 ## 14. Failure scenarios
 
-Invalid uuid returns 404.
+An invalid uuid returns 404.
 
 ## 15. Acceptance criteria
 
-A guest can complete browse flows without a token. Cooked-food products never appear as shippable.
+A guest can complete browse flows without a token. Cooked-food products never appear as shippable. No response contains a `*_en` field.
 
 ## 16. Testing requirements
 
-Integration: channel filters and locale fallback. E2E: public product list.
+Integration: channel filters, rating aggregate, pagination and sort. E2E: public product list.
 
 Definition of done: [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md).
 
@@ -82,4 +84,4 @@ No implementation work has been done. No tests have been executed.
 
 ## 19. Known limitations
 
-Home page composition is a frontend concern. There is no CMS API.
+Home page composition is a frontend concern. There is no CMS API and no public review list.

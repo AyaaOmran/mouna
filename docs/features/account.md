@@ -68,7 +68,7 @@ Name changes persist. Phone changes only after OTP. Password login uses the new 
 
 ## 16. Testing requirements
 
-Integration: phone change does not update the user before verify. Locale messages for validation.
+Integration: phone change does not update the user before verify. Arabic validation messages.
 
 Definition of done: [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md).
 

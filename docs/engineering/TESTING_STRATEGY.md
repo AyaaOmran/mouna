@@ -23,6 +23,7 @@ Each feature file lists its own cases. The payment and order features additional
 - Admin without `orders` receives 403.
 - Arabic and English error messages for one validation failure, same code and status.
 - Address-book limit: fifth active address succeeds; sixth returns `409 ADDRESS_LIMIT_REACHED`; soft-deleted historical rows are excluded; concurrent create requests never produce more than five active rows.
+- Socket.IO order monitoring: an unauthenticated or unauthorized subscription receives no order event; an authorized room receives an event only after the status transaction commits; a reconnecting client restores state through REST.
 
 ## Data
 

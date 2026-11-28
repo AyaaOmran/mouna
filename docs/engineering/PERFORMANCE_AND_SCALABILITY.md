@@ -7,12 +7,15 @@ Targets are approved in ADR-011. They are goals for measurement, not current res
 - Use the indexes in the ERD and in `DATABASE_DESIGN.md`.
 - Paginate every list. Whitelist sort fields. The product list sort values already in OpenAPI are `most_ordered`, `newest`, `price_asc`, `price_desc`, and `rating`.
 - Load relations required by the DTO in the same query. Do not loop queries per row.
+- Select only columns required by the response DTO. Every new index beyond the ERD and database-design set needs a concrete query shape and a plan reviewed against representative data; avoid redundant and low-selectivity indexes.
 - Lock stock rows in primary-key order.
 - Pool size comes from TypeORM configuration. Start with the driver default and change it only after a measurement. Do not add PgBouncer in v1.
 
 ## Redis
 
 Use Redis for BullMQ and for the throttler. Do not cache catalog responses until a measured endpoint misses the p95 target. Invalidation for prices and stock is easy to get wrong, and the catalog is not known to be hot.
+
+Socket.IO uses no Redis adapter while the application runs as one instance. If deployment becomes multi-instance, add the Socket.IO Redis adapter and load-balancer sticky sessions together; neither is a response cache.
 
 ## Application
 

@@ -6,7 +6,7 @@ Customers preview and create orders. Regular and scheduled orders are this featu
 
 ## 2. Scope
 
-In: preview, create, list, detail, customer cancel, admin list and fulfillment for every order type. Shipping-specific fields are in the shipping feature. Event fields are in the events feature. Gift fields are in the gifts feature.
+In: preview, create, list, detail, customer cancel, admin list and fulfillment for every order type, plus authenticated Socket.IO order-status monitoring. Shipping-specific fields are in the shipping feature. Event fields are in the events feature. Gift fields are in the gifts feature.
 
 ## 3. User roles
 
@@ -24,7 +24,7 @@ Normative detail: [BUSINESS_LOGIC.md](../product/BUSINESS_LOGIC.md) and [STATE_M
 
 ## 6. User workflows
 
-Preview, create, admin approve or reject, fulfillment steps, customer or admin cancel.
+Preview, create, admin approve or reject, fulfillment steps, customer or admin cancel. A client may subscribe to its authorized order room and receives a post-commit status update; it re-fetches REST state after reconnecting.
 
 ## 7. Related entities
 
@@ -42,7 +42,7 @@ The preview and create bodies follow OpenAPI `CheckoutRequest` except the paymen
 
 ## 10. Security requirements
 
-Customer queries constrain `customer_id`. Price and stock are server-side. Admin note fields are omitted from the customer payload.
+Customer queries constrain `customer_id`. Price and stock are server-side. Admin note fields are omitted from the customer payload. Socket.IO handshake and room subscription enforce the same customer ownership or scoped admin-read authorization; the socket accepts no order-changing command.
 
 Also apply [SECURITY.md](../engineering/SECURITY.md).
 
@@ -52,7 +52,7 @@ Order creation target is p95 under 800 ms excluding the gateway. Lock products i
 
 ## 12. Background jobs
 
-`expire-order` for electronic `awaiting_payment` orders, plus the sweep.
+`expire-order` for electronic `awaiting_payment` orders, plus the sweep. A committed status update emits the documented Socket.IO event after commit; it is not a background job.
 
 ## 13. Edge cases
 
@@ -68,7 +68,7 @@ State transitions match STATE_MACHINES. Stock returns to the previous value afte
 
 ## 16. Testing requirements
 
-Integration: reservation, release, illegal transition, customer isolation, concurrent last unit. E2E: cash regular order to confirmed.
+Integration: reservation, release, illegal transition, customer isolation, concurrent last unit, and post-commit Socket.IO emission. E2E: cash regular order to confirmed, authenticated subscription, and unauthorized room denial.
 
 Definition of done: [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md).
 

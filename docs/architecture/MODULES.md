@@ -8,7 +8,7 @@ Each module owns its tables and its admin and customer controllers. A separate "
 | `CatalogModule` | Category, Season, Product, ProductImage, Box, BoxItem | Grandmas |
 | `GrandmasModule` | Grandma, Recipe, VoiceMessage | Catalog for public product lists by grandma |
 | `DeliveryModule` | DeliveryZone, DeliveryPeriod, DeliverySlot, Holiday, DeliverySetting, ShippingCountry, ShippingCompany | none |
-| `OrdersModule` | Order, OrderItem, shipping, event, and gift details, OrderStatusHistory | Catalog stock, Delivery, Payments, Notifications |
+| `OrdersModule` | Order, OrderItem, shipping, event, and gift details, OrderStatusHistory; `OrdersGateway` | Catalog stock, Delivery, Payments, Notifications |
 | `PaymentsModule` | PaymentMethod, PaymentTransaction, Refund | Orders, Subscriptions, gateway interface |
 | `SubscriptionsModule` | Plan, Subscription, Delivery, CancellationRequest | Catalog, Delivery, Payments, Notifications |
 | `NotificationsModule` | Notification | queue for reminders |
@@ -35,5 +35,7 @@ Public and admin controllers live beside the feature. Routes and Swagger decorat
 | Order expiry | Orders |
 | Subscription expiry | Subscriptions |
 | Delivery reminder | Notifications |
+
+`OrdersGateway` is a Socket.IO provider in `OrdersModule`. It publishes committed order-status changes only; it does not own a table or order rules. See [REALTIME.md](../api/REALTIME.md).
 
 The processor calls the feature service. It does not embed a second copy of the status rules.

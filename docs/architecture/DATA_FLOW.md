@@ -14,7 +14,7 @@ Password reset and phone change use the same challenge entity with purposes `pas
 2. `POST /orders` locks stock, inserts the order as `awaiting_payment`, and writes items, gift or schedule fields, and history.
 3. `POST /payments` with `order_id` inserts a `pending` transaction and returns the gateway action from the configured adapter.
 4. The webhook verifies the signature, locks the order, and either moves it to `pending` / `paid` or records failure.
-5. An admin with `orders` confirms or rejects. Rejection releases stock and, if the payment succeeded, staff record a refund.
+5. An admin with `orders` confirms or rejects. Rejection releases stock and, if the payment succeeded, staff record a refund. Each committed order-status change emits the Socket.IO order-status event.
 
 ## Shipping and events
 

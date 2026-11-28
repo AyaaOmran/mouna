@@ -11,6 +11,8 @@ Pins below are the latest stable releases published on the npm registry or vendo
 | @nestjs/config | 12.1.1 | npm `latest` |
 | @nestjs/typeorm | 12.0.3 | Peer accepts `typeorm` ^0.3.0 or ^1.0.0-dev and Nest 10–12 |
 | @nestjs/bullmq | 12.0.2 | Peer accepts `bullmq` 3–6 and Nest 10–12 |
+| @nestjs/websockets | 12.6.3 | Socket.IO gateway support; match the Nest 12.6.3 core line |
+| @nestjs/platform-socket.io | 12.6.0 | Socket.IO adapter for the approved order-status gateway; re-check its matching patch when installed |
 | @nestjs/throttler | 6.8.0 | Peer accepts Nest 12 |
 | @nestjs/cli | 12.0.15 | npm `latest`. Generators need Node 22.22.3+, 24.15+, or 26+ |
 | TypeORM | 1.1.3 | npm `latest`. Already resolved with `@nestjs/typeorm` 12.0.3 in this repository |
@@ -18,6 +20,7 @@ Pins below are the latest stable releases published on the npm registry or vendo
 | TypeScript | 6.0.2 | Already in the scaffold. Swagger's peer accepts ^6.0.0. Do not jump to a newer TypeScript major without checking that peer |
 | pg | 8.23.1 | npm `latest` |
 | BullMQ | 6.7.10 | npm `latest`, inside the Nest peer range |
+| socket.io | 4.8.4 | Order-status monitoring transport; npm `latest` on 28 November 2026 |
 | ioredis | 6.1.0 | npm `latest` |
 | class-validator | 0.15.1 | npm `latest` |
 | class-transformer | 0.5.1 | npm `latest` |
@@ -41,4 +44,4 @@ The scaffold uses oxlint and Prettier. Keep them. Do not add ESLint beside oxlin
 
 ## Not adopted
 
-Kafka, gRPC, Socket.IO, Sequelize, Mongoose, Docker, Kubernetes, and a CI vendor. `@nestjs/schedule` is not adopted. Every sweep is a BullMQ repeatable job.
+Kafka, gRPC, Sequelize, Mongoose, Docker, Kubernetes, and a CI vendor. Socket.IO is adopted only for order-status monitoring under ADR-016. `@nestjs/schedule` is not adopted. Every sweep is a BullMQ repeatable job.

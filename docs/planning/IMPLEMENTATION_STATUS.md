@@ -28,3 +28,5 @@ No feature is Implemented or Verified. No tests have been executed for these fea
 | Static pages | Not Started | Backend has no work beyond refusing a CMS. |
 
 Status values allowed later: In Progress, Blocked, Implemented, Verified.
+
+28 November 2026: Socket.IO order-status monitoring is an accepted design only (ADR-016); its package installation, gateway, and tests have not started. Feature statuses remain Not Started.

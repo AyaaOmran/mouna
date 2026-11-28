@@ -98,3 +98,11 @@ List metadata uses `page` and `limit`. This replaces OpenAPI `page_size`. Defaul
 **Concurrency and lifecycle:** The create operation runs in a database transaction and first locks the owning `User` row with `SELECT ... FOR UPDATE`, then counts active addresses and inserts only when the count is below five. All operations that can increase the active count must take the same lock. Updating an address that is already referenced by an order or subscription soft-deletes the old row and inserts its replacement in the same transaction, so the active count remains unchanged. Deletion frees an active slot. Keep `synchronize: false`; ship the supporting partial index through a migration.
 
 **Consequences:** The feature doc, business logic, database design, error catalog, Swagger contract, and address tests must reflect this limit. No new endpoint or request field is required.
+
+## ADR-016 Socket.IO order-status monitoring
+
+**Status:** Accepted, 28 November 2026.
+
+**Decision:** Socket.IO is approved only for authenticated order-status monitoring. `OrdersModule` owns the gateway, which emits the documented `order.status.updated` event after the order-status transaction commits. REST stays the source of truth. The socket accepts authenticated room subscriptions only; it accepts no state-changing command. Customers join only their own orders; admin access follows the HTTP order-detail authorization and its event/gift read scoping.
+
+**Consequences:** Add the Socket.IO Nest packages during Phase 0. No Socket.IO Redis adapter is used for the one-instance deployment. A later multi-instance deployment needs that adapter plus sticky-session support. See [ADR-016](adr/ADR-016-order-status-socketio.md) and [REALTIME.md](../api/REALTIME.md).

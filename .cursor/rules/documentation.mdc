@@ -11,3 +11,4 @@ alwaysApply: false
 - Do not edit files under `originals/`.
 - Write agent-facing docs in English. Leave the Arabic concept unchanged.
 - Record executed test commands and results. Do not write that tests passed unless they ran.
+- For feature work, use `docs/planning/FEATURE_CHANGE_TEMPLATE.md` to keep the progress entry source-backed and compact.

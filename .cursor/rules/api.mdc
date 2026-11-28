@@ -1,6 +1,6 @@
 ---
 description: MONAT HTTP contracts, pagination, and localization
-globs: src/**/*.controller.ts,src/**/*.dto.ts
+globs: src/**/*.controller.ts,src/**/*.dto.ts,docs/api/swagger.yaml
 alwaysApply: false
 ---
 
@@ -11,3 +11,4 @@ alwaysApply: false
 - Error JSON uses `error.code`, `error.message`, optional `details`, and `request_id`.
 - Localize `message` only. Keep field names, enums, and status codes stable.
 - Swagger decorators must match `docs/api/swagger.yaml`. Permission names come from `docs/product/USER_ROLES_AND_PERMISSIONS.md`.
+- When the contract changes, update the Swagger document, DTOs, decorators, and endpoint tests together. Run `npm run api:lint` before claiming the contract change is complete, and raise `info.version` for a public contract change.

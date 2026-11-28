@@ -1,0 +1,13 @@
+---
+description: MONAT evidence, scope, and efficient-context guardrails
+globs: src/**/*.ts,docs/**/*.md,docs/api/swagger.yaml
+alwaysApply: false
+---
+
+# Evidence first
+
+- Before changing behavior, cite the governing feature, ADR, business rule, state machine, Swagger path, or database design. If none authorizes it, add or update `docs/planning/OPEN_QUESTIONS.md`; do not guess.
+- Keep modifications in the owning module and reuse documented ports. Do not add a pattern, provider, endpoint, entity, enum, or abstraction merely for possible future use.
+- For a feature change, record the source consulted, scope, tests/validation actually run, result, and remaining limitation in `IMPLEMENTATION_PROGRESS.md` using `FEATURE_CHANGE_TEMPLATE.md`.
+- Run `npm run api:lint` whenever `docs/api/swagger.yaml` changes. Do not claim an API contract is validated unless that command passed.
+- Load only task-relevant documents and tool output. Search targeted paths, inspect the diff, and summarize evidence rather than duplicating large documents.

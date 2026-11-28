@@ -20,6 +20,8 @@ Auth, account, admin customers, super admin, dashboard and reports, public catal
 
 There is no cart resource. There is no CMS resource. There is no grandma-login resource.
 
+Socket.IO order-status monitoring is documented separately in [REALTIME.md](REALTIME.md). It has no REST path and does not modify this OpenAPI contract.
+
 ## Pagination
 
 Every list uses `page` and `limit`. Default 20, maximum 100. The name `page_size` from the 2.0.0 file is not used.

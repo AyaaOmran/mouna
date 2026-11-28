@@ -1,0 +1,6 @@
+extends:
+  - minimal
+
+apis:
+  monat@v1:
+    root: ./docs/api/swagger.yaml

@@ -15,11 +15,12 @@ CI does not deploy.
 
 1. Install with `npm ci` on Node.js 26 Active LTS.
 2. Prettier check and oxlint.
-3. TypeScript build.
-4. Unit tests (`npm run test:cov`, using Vitest).
-5. Integration and E2E tests (`npm run test:e2e`) against PostgreSQL 19 and Redis. The job fails if those services are not provided.
-6. `npm audit` at high severity or above.
-7. Migration check: migrations apply on an empty database.
+3. OpenAPI validation (`npm run api:lint`).
+4. TypeScript build.
+5. Unit tests (`npm run test:cov`, using Vitest).
+6. Integration and E2E tests (`npm run test:e2e`) against PostgreSQL 19 and Redis. The job fails if those services are not provided.
+7. `npm audit` at high severity or above.
+8. Migration check: migrations apply on an empty database.
 
 ## CD stages
 

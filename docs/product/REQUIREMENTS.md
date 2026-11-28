@@ -55,4 +55,4 @@ Sources: the Arabic concept, ERD v2, the endpoint list, OpenAPI 2.0.0, and the a
 
 ## Explicit non-goals
 
-Concept section 17, plus no microservices, no Kafka, no gRPC, no Socket.IO, no CMS, no coupons, no grandma payout execution.
+Concept section 17, plus no microservices, no Kafka, no gRPC, no CMS, no coupons, no grandma payout execution. Socket.IO is the narrow exception for authenticated order-status monitoring only; it adds no state-changing API.

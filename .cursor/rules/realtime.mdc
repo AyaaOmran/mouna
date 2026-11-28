@@ -1,0 +1,13 @@
+---
+description: MONAT Socket.IO order-status monitoring
+globs: src/**/*.gateway.ts,src/modules/orders/**/*.ts,src/main.ts
+alwaysApply: false
+---
+
+# Realtime
+
+- Socket.IO is limited to the `/orders` namespace and the `order.status.updated` event in `docs/api/REALTIME.md`.
+- Authenticate the Socket.IO handshake before accepting subscriptions. A customer may join only an owned order room; an admin uses the same scoped order-read authorization as the HTTP detail route.
+- The HTTP API remains the source of truth. Sockets carry no command that changes an order, and reconnecting clients re-fetch the order through REST.
+- Emit only after the transaction that writes `Order` and `OrderStatusHistory` commits. The event payload contains no address, phone, payment secret, or admin-only note.
+- Do not add a Redis Socket.IO adapter while the application has one instance. A multi-instance deployment requires the adapter and load-balancer sticky-session design documented in `REALTIME.md`.

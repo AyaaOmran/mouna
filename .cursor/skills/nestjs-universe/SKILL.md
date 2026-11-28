@@ -5,7 +5,7 @@ description: NestJS standards for the MONAT API. Use when editing NestJS modules
 
 # NestJS Universe (MONAT)
 
-This skill is the MONAT profile of the original `nestjs-universe` skill. The untouched original is in `originals/nestjs-universe/`. Do not load Kafka, gRPC, microservices, Socket.IO, Sequelize, or Docker from that original.
+This skill is the MONAT profile of the original `nestjs-universe` skill. The untouched original is in `originals/nestjs-universe/`. Do not load Kafka, gRPC, microservices, Sequelize, or Docker from that original. Socket.IO is allowed only for the documented order-status monitoring channel.
 
 ## Detected stack
 
@@ -16,6 +16,7 @@ This skill is the MONAT profile of the original `nestjs-universe` skill. The unt
 | Vitest | The only test runner. |
 | class-validator | The only DTO validator. |
 | BullMQ | The only queue. |
+| Socket.IO | Order-status monitoring only; REST remains authoritative. |
 
 ## Invariants
 
@@ -37,6 +38,7 @@ This skill is the MONAT profile of the original `nestjs-universe` skill. The unt
 - Performance: [references/performance-and-caching.md](references/performance-and-caching.md)
 - Vitest: [references/testing-and-quality.md](references/testing-and-quality.md)
 - BullMQ: [references/queues-and-background-jobs.md](references/queues-and-background-jobs.md)
+- Realtime and patterns: [references/realtime-and-patterns.md](references/realtime-and-patterns.md)
 
 Product behavior stays in `docs/`. This skill does not restate it.
 

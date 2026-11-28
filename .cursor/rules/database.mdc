@@ -1,6 +1,6 @@
 ---
 description: MONAT TypeORM schema, transactions, and locks
-globs: src/**/*.entity.ts,src/**/migrations/**/*.ts
+globs: src/**/*.entity.ts,src/**/*.service.ts,src/**/migrations/**/*.ts
 alwaysApply: false
 ---
 
@@ -10,4 +10,5 @@ alwaysApply: false
 - Integer primary keys. UUID only on `VoiceMessage`.
 - Money and stock are numeric, never `float`.
 - Stock changes use a transaction and row locks in primary-key order.
+- Use TypeORM parameters for all values. Dynamic identifiers, including sort fields, come only from a fixed allowlist; never concatenate client input into SQL.
 - Follow `docs/database/DATABASE_DESIGN.md` for columns that are not in the original ERD.

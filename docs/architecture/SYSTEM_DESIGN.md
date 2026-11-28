@@ -17,6 +17,8 @@ Workers are part of the modular monolith. They are not a separate service in v1.
 
 ## Request path
 
+For an order status change, the service commits the order and `OrderStatusHistory` transaction first, then publishes the documented Socket.IO status event. The event is best-effort; REST remains the recovery path after reconnect.
+
 1. Helmet, CORS from configuration, global prefix `api/v1`.
 2. Global auth guard. `@Public()` opts out.
 3. Permission guard for admin routes.
@@ -48,7 +50,7 @@ Workers are part of the modular monolith. They are not a separate service in v1.
 
 ## What is intentionally absent
 
-Microservices, Kafka, RabbitMQ, gRPC, Socket.IO, a CMS, a cart service, a product-variant model, a translation table, and a deployment platform. CI is described without a vendor workflow. The scaffold GitHub Actions file is not adopted.
+Microservices, Kafka, RabbitMQ, gRPC, a CMS, a cart service, a product-variant model, a translation table, and a deployment platform. Socket.IO is the sole exception: it is limited to post-commit order-status monitoring under [REALTIME.md](../api/REALTIME.md). CI is described without a vendor workflow. The scaffold GitHub Actions file is not adopted.
 
 ## Performance targets
 

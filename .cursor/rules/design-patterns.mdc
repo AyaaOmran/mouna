@@ -1,0 +1,13 @@
+---
+description: MONAT pattern selection and abstraction limits
+globs: src/**/*.ts
+alwaysApply: false
+---
+
+# Patterns and boundaries
+
+- Prefer a feature-service method over a new abstraction. Add a type, interface, or provider only for a real external boundary or two interchangeable implementations.
+- Use Strategy for approved external ports (`PaymentGateway`, `SmsSender`, `Storage`). Use a factory only in composition/configuration to choose one adapter. Do not add a factory for entities, DTOs, or one implementation.
+- Nest providers are singleton by default. Do not create manual `static getInstance()` singletons or a service locator.
+- Use an in-process observer/event only for non-critical post-commit work. Required writes remain explicit service calls in the same transaction; do not add a generic event bus or CQRS layer.
+- Keep Socket.IO limited to the documented order-status monitoring channel. It is not a command transport or a replacement for REST.

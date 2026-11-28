@@ -22,7 +22,7 @@ The Arabic concept, ERD v2, the original endpoint list, the 2.0.0 OpenAPI file, 
 | `docs/product/` | Scope, business rules, roles and permissions. |
 | `docs/architecture/` | System design, modules, flows, state machines, ADRs. |
 | `docs/database/` | ERD index, schema additions, migration rules. |
-| `docs/api/` | The working contract (`swagger.yaml`, version 2.3.0), endpoint index, conventions, errors, localization. |
+| `docs/api/` | The working REST contract (`swagger.yaml`, version 2.3.0), endpoint index, conventions, errors, localization, and the Socket.IO order-status protocol. |
 | `docs/engineering/` | Stack, security, performance, jobs, tests, CI, operations. |
 | `docs/features/` | One file per confirmed feature. |
 | `docs/planning/` | Plan, status, progress, traceability, quality, open questions. |
@@ -47,7 +47,7 @@ When two documents disagree, use this order:
 | On demand | The task matches the skill description | `nestjs-universe` or `monat-feature-workflow`, then only the reference that skill points to. |
 | Not loaded | Until the feature workflow says to read it | Feature docs, ADRs, `swagger.yaml`, the concept. |
 
-No subagents are defined. Kafka, gRPC, microservices, Socket.IO, and deployment assets are not part of the active skill.
+No subagents are defined. Kafka, gRPC, and microservices are not part of the active skill. Socket.IO is limited to documented order-status monitoring; deployment assets are held.
 
 ## Status of this package
 

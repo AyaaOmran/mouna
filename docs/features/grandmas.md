@@ -10,11 +10,11 @@ In: admin CRUD listed below. Out: grandma login.
 
 ## 3. User roles
 
-Admin with `grandmas`. Public reads are the catalog feature.
+Admin with `grandmas.*` keys. Public reads are the catalog feature.
 
 ## 4. Permissions
 
-`grandmas`.
+`grandmas.view` for reads; `grandmas.create_edit`, `grandmas.change_status`, and `grandmas.set_of_month` for the matching writes.
 
 ## 5. Business rules
 
@@ -68,7 +68,7 @@ Public pages omit admin phone. One grandma of the month is enforced by the datab
 
 ## 16. Testing requirements
 
-Integration: unique grandma of the month. Permission 403 without `grandmas`.
+Integration: unique grandma of the month. Permission 403 without `grandmas.view`.
 
 Definition of done: [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md).
 

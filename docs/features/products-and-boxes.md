@@ -10,11 +10,11 @@ In: product and box writes. Out: order creation.
 
 ## 3. User roles
 
-Admin with `products`.
+Admin with `products.*` keys.
 
 ## 4. Permissions
 
-`products`.
+`products.view` for reads; `products.create_edit` for create and edit; `products.manage_price_stock` for price and stock; `products.manage_availability_publish` for availability and publish state.
 
 ## 5. Business rules
 
@@ -64,7 +64,7 @@ Deleting an image does not delete the product. Deleting a product referenced by 
 
 ## 15. Acceptance criteria
 
-Channel and fulfillment checks match BUSINESS_LOGIC. English names are editable and nullable.
+Channel and fulfillment checks match BUSINESS_LOGIC. Names are Arabic only; there is no `*_en` field.
 
 ## 16. Testing requirements
 

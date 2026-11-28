@@ -6,7 +6,7 @@ MONAT (مونة الجدّات) is a modular-monolith NestJS API. ESM, TypeScrip
 
 1. Read the feature file in `docs/features/` and `docs/product/BUSINESS_LOGIC.md`.
 2. If the work touches status changes, read `docs/architecture/STATE_MACHINES.md`.
-3. If the work touches schema or HTTP, read `docs/database/DATABASE_DESIGN.md` and the relevant paths in `docs/api/swagger.yaml` (contract v2.3.0).
+3. If the work touches schema or HTTP, read `docs/database/DATABASE_DESIGN.md` and the relevant paths in `docs/api/swagger.yaml` (contract v3.0.0).
 4. Apply the skill `monat-feature-workflow`. Load `nestjs-universe` when editing NestJS code.
 5. Do not invent business rules, entities, endpoints, or providers. Gaps belong in `docs/planning/OPEN_QUESTIONS.md`.
 
@@ -16,7 +16,7 @@ MONAT (مونة الجدّات) is a modular-monolith NestJS API. ESM, TypeScrip
 - Integer primary keys. UUID only on `VoiceMessage` for public QR lookup.
 - Controllers validate and map DTOs. Services own business rules. Repositories stay inside the owning module.
 - Do not return password hashes, refresh-token hashes, or OTP hashes.
-- Human-readable text follows `Accept-Language`. Field names, enums, and status codes do not change by language.
+- Human-readable product text is Arabic only, RTL. There is no `Accept-Language` and no language switcher. Field names, enums, status codes, error codes, permission keys, code, comments, and documentation stay English technical names.
 - A feature stays Not Started, In Progress, Blocked, or Implemented until its required tests have been executed and passed. Only then mark it Verified.
 - After a feature change, update the feature file, `docs/planning/IMPLEMENTATION_STATUS.md`, and `docs/planning/IMPLEMENTATION_PROGRESS.md`.
 

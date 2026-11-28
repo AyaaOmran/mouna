@@ -20,22 +20,21 @@ V1 backend features. Frontend-only items are included so the agent does not add 
 | Payments and refunds | [payments.md](../features/payments.md) | Payments | Orders, subscriptions |
 | Reviews | [reviews.md](../features/reviews.md) | Reviews | Orders |
 | Subscriptions | [subscriptions.md](../features/subscriptions.md) | Subscriptions | Catalog, addresses, payments |
-| Delivery and shipping settings | [delivery-settings.md](../features/delivery-settings.md) | Delivery | Identity permissions |
+| Delivery reference data | [delivery-settings.md](../features/delivery-settings.md) | Delivery | Seed data |
 | Admin dashboard | [dashboard.md](../features/dashboard.md) | Reports | Orders, subscriptions |
 | Reports and grandma dues | [reports.md](../features/reports.md) | Reports | Orders, subscriptions |
 | Admin customers | [customers-admin.md](../features/customers-admin.md) | Identity | Authentication |
 | Super Admin | [super-admin.md](../features/super-admin.md) | Identity | Authentication |
 | Static pages | [static-pages.md](../features/static-pages.md) | none | Frontend content |
 
-Deferred, from concept section 17: multi-grandma carts, grandma accounts, automatic capacity limits, per-country shipping eligibility, pickup, driver role, event quotes, gifts on events or subscriptions, SMS or WhatsApp notifications beyond OTP, automatic grandma payout, server-side cart, CMS, coupons, review moderation.
+Deferred, from spec §30 and §37 and concept section 17: multi-grandma carts, grandma accounts, holiday or production calendars, complex delivery schedules and exceptions, automatic capacity limits, per-product-per-country shipping eligibility, pickup, driver role or GPS, carrier API integration, event quotes, gifts on events or subscriptions, SMS or WhatsApp notifications beyond OTP, automatic grandma payout, server-side cart, CMS, coupons, review moderation, and independent system, payment, or commission settings pages.
 
 ## Jobs that are actually asynchronous
 
 | Job | Why it is queued |
 |---|---|
 | Send OTP SMS | External provider, retries, backoff |
-| Expire unpaid order | Delayed, plus a sweep if the delayed job was missed |
-| Expire unpaid subscription | Same pattern |
+| Expire unpaid subscription | Delayed, plus a sweep if the delayed job was missed |
 | Upcoming subscription-delivery notice | Delayed until 24 hours before the delivery date, plus a sweep |
 
 Payment webhooks, stock reservation, delivery-row creation, and in-app notification inserts run in the database transaction. They are not queued. See [BACKGROUND_JOBS.md](../engineering/BACKGROUND_JOBS.md).

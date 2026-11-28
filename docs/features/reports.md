@@ -10,11 +10,11 @@ In: the three report routes. Out: paying grandmas.
 
 ## 3. User roles
 
-Admin with `reports`.
+Admin with the matching `reports.*` key.
 
 ## 4. Permissions
 
-`reports`.
+`reports.orders_sales` for `/admin/reports/sales`; `reports.subscriptions` for `/admin/reports/subscriptions`; `reports.grandma_dues` for `/admin/reports/grandma-dues`.
 
 ## 5. Business rules
 
@@ -24,7 +24,7 @@ Normative detail: [BUSINESS_LOGIC.md](../product/BUSINESS_LOGIC.md) and [STATE_M
 
 ## 6. User workflows
 
-GET with a date range.
+Sales and grandma-dues return a paginated `rows` array. The subscriptions report is a single aggregate object and is not paginated.
 
 ## 7. Related entities
 

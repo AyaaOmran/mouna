@@ -10,11 +10,11 @@ In: gift fields on checkout. Out: a gift shop, gifts on events and subscriptions
 
 ## 3. User roles
 
-Customer sets the flag. Admin with `orders` fulfills. Admin with `gifts` can read the filtered view.
+Customer sets the flag. Admin with `orders.view` fulfills; the gift view is a filter on the orders table, not a separate section.
 
 ## 4. Permissions
 
-`gifts` is read-only. Mutations use `orders`.
+`orders.view` for the filtered list and detail. Mutations use the specific `orders.*` key.
 
 ## 5. Business rules
 

@@ -37,19 +37,50 @@ Base model: [ERD v2](../../originals/Monat_AlJaddat_ERD_v2.md). This file is the
 
 `Order.inventory_held` boolean, not null, default false. True after a successful reservation, false after release.
 
-English text, all nullable. The original column stays the Arabic value. Do not rename it to `name_ar`.
+Arabic is the only product language (ADR-017). There are no `*_en` columns. The existing Arabic columns keep their names; do not rename them to `name_ar`.
 
-| Entity | English columns |
-|---|---|
-| Product | `name_en`, `description_en`, `sale_unit_en`, `storage_method_en` |
-| Category, Season, DeliveryZone, ShippingCountry, PaymentMethod, Holiday, DeliveryPeriod, ShippingCompany | `name_en` |
-| Grandma | `name_en`, `story_en`, `bio_en` |
-| Recipe | `title_en`, `content_en` |
-| VoiceMessage, SubscriptionPlan | `title_en` or `name_en` matching the Arabic column |
-| BoxItem | `item_name_en` |
-| SystemSetting | `platform_name_en` |
+`SystemSetting.currency` is `SYP`. There is no `SystemSetting.language` column and no `language` field in the public settings payload.
 
-`SystemSetting.language` is the default locale, `ar` or `en`, default `ar`. `SystemSetting.currency` is `SYP`.
+## Changes to the base model
+
+The ERD v2 is the base. These deltas are applied by migration.
+
+### Order
+
+- Status set: `pending`, `confirmed`, `preparing`, `ready`, `out_for_delivery`, `delivered`, `cancelled` (ADR-020).
+- `payment_status` set: `unpaid`, `paid`, `refunded`.
+- Remove `payment_deadline`.
+- `cancel_reason` is required when an admin rejects a `pending` order.
+
+### Review
+
+Replace the per-order-item review with one review per delivered order (ADR-018).
+
+| Column | Type | Notes |
+|---|---|---|
+| id | integer PK | |
+| order_id | integer FK | Unique, not null |
+| rating | integer | 1–5 |
+| comment | text | Nullable, maximum 2000 characters |
+| published_at | timestamptz | Set at creation |
+| created_at | timestamptz | |
+| updated_at | timestamptz | |
+
+`order_item_id` and `product_id` are removed from `Review`.
+
+### OrderShippingDetail
+
+Store `shipping_company_name` as free text next to `tracking_number`. Remove `shipping_company_id` and the `ShippingCompany` foreign key.
+
+### Removed entities
+
+Do not create these ERD entities (ADR-021):
+
+- `Holiday` — no holiday calendar (`spec §11` item 8, `§19`, `§22`, `§30`).
+- `DeliverySlot` — no weekday slot tables (`spec §9.1`, `§22`).
+- `ShippingCompany` — the company name is free text on the order (`spec §9.2`, `§22`).
+
+`DeliveryZone`, `DeliveryPeriod`, `ShippingCountry`, and `DeliverySetting` remain, as seeded reference data with no admin CRUD.
 
 ## Constraint changes
 
@@ -88,7 +119,7 @@ Keep the ERD performance indexes. Add:
 | RefreshToken | `token_hash` unique | Login refresh lookup |
 | OtpChallenge | `(phone, purpose, consumed_at)` | Active challenge lookup |
 | PaymentTransaction | `gateway_reference` unique | Webhook idempotency |
-| Order | `(inventory_held, status)` | Release and expiry scans |
+| Order | `(inventory_held, status)` | Release scans |
 
 ## Types and integrity
 
@@ -98,6 +129,20 @@ Keep the ERD performance indexes. Add:
 - Order item `unit_price` is a snapshot. Subscription `subtotal`, `fee_amount`, and `total_price` are snapshots.
 - Address edits that are already referenced create a new row and soft-delete the old row, as in the ERD.
 - Delete of a category, grandma, zone, or product that is still referenced returns 409.
+
+## Seed data
+
+These rows are prepared before launch and have no admin CRUD (`spec §22`, `§26`; ADR-021):
+
+| Table | Seed |
+|---|---|
+| `Permission` | The 26 keys in ADR-019 |
+| `SystemSetting` | One row: platform name, `currency = SYP`, commission rate, subscription payment deadline |
+| `PaymentMethod` | Active methods |
+| `DeliveryZone` | Service zones with a fixed `fee` |
+| `DeliveryPeriod` | Fixed period list (`name`, `start_time`, `end_time`) |
+| `ShippingCountry` | Supported countries with a fixed `fee` |
+| `DeliverySetting` | One row: `min_preparation_hours` (default 4) |
 
 ## Stock transaction
 

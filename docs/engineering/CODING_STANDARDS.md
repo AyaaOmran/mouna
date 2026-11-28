@@ -9,5 +9,6 @@
 - No `any` unless a gateway payload is untyped, and then isolate it at the adapter boundary.
 - Format with Prettier. Lint with oxlint before a merge.
 - Comments explain a constraint that the code cannot show, such as a lock order. Do not comment the concept back into the code.
+- Arabic is the only product language. Code, comments, docs, and agent instructions stay English (ADR-017).
 - Do not add a repository interface for every entity. TypeORM repositories are the persistence API.
 - Shared code goes in `src/common` only when two modules need it. Prefer a feature service export over a generic helper layer.

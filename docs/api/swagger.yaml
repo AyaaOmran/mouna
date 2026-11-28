@@ -1,9 +1,9 @@
 openapi: 3.0.3
 info:
   title: Monat Al-Jaddat API (مونة الجدّات)
-  version: 2.3.0
+  version: 3.0.0
   description: |
-    REST API contract for the «Monat Al-Jaddat» platform, release v1 of the product. This is contract version 2.3.0.
+    REST API contract for the «Monat Al-Jaddat» platform, This is contract version 3.0.0.
 
     **Sources of truth (priority order)**
     1. Requirements: `Monat_AlJaddat_Full_Concept_Simplified_Final_v33333333.md`, cited as **§n**.
@@ -23,17 +23,17 @@ info:
       Business-rule conflicts (state transitions, uniqueness, still-referenced records) return `409`.
     - **Computed values** are read-only and never stored: `can_cancel`, `cancel_deadline`, grandma `avg_rating`,
       product `availability`, season `status`, delivered and remaining deliveries.
-    - **Authorization:** bearer token plus role. Admin operations declare `x-required-permission` (a permission section, or the special
-      `any-admin` dashboard rule; §1/§12). A Super Admin passes every admin check (§12). Customer resources are scoped to the token owner.
+    - **Authorization:** bearer token plus role. Admin operations declare `x-required-permission` with one of the 26 function keys
+      (spec §12, ADR-019). A Super Admin passes every admin check. Customer resources are scoped to the token owner.
       Another customer's resource returns `404`, so its existence is not revealed.
-    - **Language:** `Accept-Language: ar` or `en`; other values fall back to Arabic. Field names, enums, and status codes
-      do not change. Localized text follows `LOCALIZATION.md`.
+    - **Language:** Arabic only, RTL. Human-readable response text is Arabic. Field names, enums, status codes, error codes,
+      permission keys, endpoints, and database columns stay English technical names (ADR-017). No `Accept-Language` and no second catalog.
 
     **Excluded by design (§17):** server-side cart (LocalStorage, §5), CMS, coupons, review moderation, grandma accounts,
     driver role, quotes, SMS/WhatsApp notifications, automatic settlement.
 
     **Resolved by the ADRs and applied here:** token format and lifetime, OTP length, payment ordering and ownership,
-    cash-paid timing, rating scale, the ten-section permission catalogue (grandmas, products, categories, orders,
+    cash-paid timing, rating scale, the 26 function keys (grandmas, products, categories, orders,
     subscriptions, events, delivery, gifts, customers, reports), pagination, and localization. Arrays in
     `x-required-permission` mean that any one listed section is sufficient for the scoped read-only view.
 
@@ -48,24 +48,21 @@ x-background-jobs:
     Asynchronous work required by the requirements. It runs outside the request cycle and is listed here so client
     behavior is clear. Scheduling technology, retries and queue design are implementation choices.
   jobs:
-    - name: expire-unpaid-orders
-      trigger: periodic
-      rule: '`awaiting_payment` orders past `payment_deadline` → `cancelled`, reason "انتهاء مهلة الدفع"; history row with `changed_by = null`; notification `order_cancelled_payment_timeout` (§5, §13-9).'
     - name: expire-unpaid-subscriptions
       trigger: periodic
       rule: '`pending_payment` subscriptions past `payment_deadline` → `cancelled` (§6).'
     - name: process-payment-webhook
-      trigger: 'POST /payments/webhook'
-      rule: 'Idempotent on `gateway_reference`. Updates `PaymentTransaction.status`; on success moves the linked order to `confirmed`/`paid` or activates the linked subscription.'
+      trigger: POST /payments/webhook
+      rule: Idempotent on `gateway_reference`. Updates `PaymentTransaction.status`; on success moves the linked order to `confirmed`/`paid` or activates the linked subscription.
     - name: generate-subscription-deliveries
       trigger: subscription activated
       rule: 'Create `deliveries_count` `SubscriptionDelivery` rows (`scheduled`): weekly from `start_date`, or every 3 months for seasonal plans (§6). Notification `subscription_activated`.'
     - name: upcoming-delivery-notifications
       trigger: periodic
-      rule: 'Notification `subscription_delivery_upcoming` 24 hours before a delivery (§3.9-هـ).'
+      rule: Notification `subscription_delivery_upcoming` 24 hours before a delivery (§3.9-هـ).
     - name: complete-subscriptions
       trigger: delivery marked delivered
-      rule: 'When every delivery of a subscription is delivered → `completed`; notification `subscription_ended`.'
+      rule: When every delivery of a subscription is delivered → `completed`; notification `subscription_ended`.
 servers:
   - url: https://api.example.com/api/v1
     description: Placeholder host (not specified). The path carries the major API version.
@@ -87,34 +84,28 @@ tags:
   - name: Subscriptions
     description: Subscription plans and customer subscriptions (§3.7, §6)
   - name: Admin - Dashboard
-    description: Statistics and follow-up lists (§11.1)
+    description: Statistics and follow-up lists (spec §14)
   - name: Admin - Orders
-    description: The single orders table for all types (§11.2, §11.3, §11.8)
+    description: The single orders table for all types (spec §11.2, §11.3, §11.8)
   - name: Admin - Grandmas
     description: Grandmas, recipes, voice messages, grandma of the month (§11.4)
   - name: Admin - Catalog
-    description: Products, boxes, images, categories, seasons (§11.5, §11.6, §11.10)
+    description: Products, boxes, images, categories, seasons (§11.5, §11.6, spec §140)
   - name: Admin - Subscriptions
     description: Plans, subscriptions, cancellation requests, deliveries (§11.7)
-  - name: Admin - Delivery & Shipping
-    description: Zones, periods, slots, holidays, delivery settings, countries, companies (§9, §11.9)
   - name: Admin - Customers
-    description: Customer accounts (§11.11)
+    description: Customer accounts (spec §141)
   - name: Admin - Reports
-    description: Sales, subscriptions, grandma dues (§11.12)
+    description: Sales, subscriptions, grandma dues (spec §142)
   - name: Super Admin
     description: Admins, permissions, system/payment/commission settings, activity log (§12)
-
 security:
   - bearerAuth: []
-
 paths:
-  # =====================================================================
-  # AUTH
-  # =====================================================================
   /auth/register:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Start customer registration (sends OTP)
       description: |
         Validates the data and sends an OTP by SMS (§3.8). The account is created only after
@@ -142,7 +133,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /auth/register/verify-otp:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Verify the registration OTP and create the account
       operationId: verifyRegistrationOtp
       security: []
@@ -167,7 +159,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /auth/login:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Log in with phone number and password
       description: |
         §3.8. The same endpoint serves every role. The admin login identifier is not separately specified (M-01).
@@ -197,7 +190,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /auth/logout:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: End the current session
       description: Revokes the submitted refresh token. The access token expires on its own within 15 minutes (ADR-008).
       operationId: logout
@@ -216,7 +210,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /auth/refresh:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Rotate the refresh token and issue a new access token
       description: |
         Exchanges a valid opaque refresh token for a new 15-minute access token and a rotated 30-day refresh token.
@@ -244,7 +239,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /auth/password/forgot:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Request a password-reset OTP
       description: The response is the same whether or not the phone is registered, so accounts cannot be enumerated.
       operationId: forgotPassword
@@ -268,7 +264,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /auth/password/verify-otp:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Verify the password-reset OTP
       operationId: verifyPasswordResetOtp
       security: []
@@ -293,7 +290,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /auth/password/reset:
     post:
-      tags: [Auth]
+      tags:
+        - Auth
       summary: Set a new password using the reset token
       operationId: resetPassword
       security: []
@@ -310,13 +308,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # ACCOUNT
-  # =====================================================================
   /me:
     get:
-      tags: [Account]
+      tags:
+        - Account
       summary: Get my profile
       operationId: getMyProfile
       responses:
@@ -329,7 +324,8 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
     patch:
-      tags: [Account]
+      tags:
+        - Account
       summary: Update my first and last name
       description: The phone number changes only through the OTP flow (§3.9-أ).
       operationId: updateMyProfile
@@ -352,7 +348,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /me/phone/change-request:
     post:
-      tags: [Account]
+      tags:
+        - Account
       summary: Request a phone change (OTP sent to the new number)
       operationId: requestPhoneChange
       requestBody:
@@ -378,7 +375,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /me/phone/verify-otp:
     post:
-      tags: [Account]
+      tags:
+        - Account
       summary: Confirm the phone change with the OTP
       operationId: verifyPhoneChange
       requestBody:
@@ -404,7 +402,8 @@ paths:
           $ref: '#/components/responses/TooManyRequests'
   /me/password:
     put:
-      tags: [Account]
+      tags:
+        - Account
       summary: Change my password
       operationId: changeMyPassword
       requestBody:
@@ -424,7 +423,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /me/addresses:
     get:
-      tags: [Account]
+      tags:
+        - Account
       summary: List my active addresses
       description: Soft-deleted addresses (`deleted_at` set) are never listed. Each customer can have at most 5 active saved addresses; historical soft-deleted rows do not count.
       operationId: listMyAddresses
@@ -440,7 +440,8 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
     post:
-      tags: [Account]
+      tags:
+        - Account
       summary: Add an address
       description: |
         The zone must be an active service zone (§3.9-ب). A customer may have at most **5 active saved addresses** (`deleted_at IS NULL`); soft-deleted historical rows do not count. A sixth active address returns `409 ADDRESS_LIMIT_REACHED`. The check and insert are serialized in a transaction by locking the owning user row. With `is_default = true`, the previous default is unset (at most one active default per user; ERD v2 partial unique index).
@@ -468,7 +469,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/AddressId'
     get:
-      tags: [Account]
+      tags:
+        - Account
       summary: Get one of my addresses
       operationId: getMyAddress
       responses:
@@ -483,7 +485,8 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     put:
-      tags: [Account]
+      tags:
+        - Account
       summary: Update one of my addresses
       description: |
         **ERD v2 address lifecycle (A-06):** if the address is already referenced by an order or subscription, the update
@@ -510,7 +513,8 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
     delete:
-      tags: [Account]
+      tags:
+        - Account
       summary: Delete one of my addresses (soft delete)
       description: Sets `deleted_at` (§3.9-ب, ERD v2). Orders and subscriptions that reference it are unaffected.
       operationId: deleteMyAddress
@@ -523,7 +527,8 @@ paths:
           $ref: '#/components/responses/NotFound'
   /me/notifications:
     get:
-      tags: [Account]
+      tags:
+        - Account
       summary: List my in-app notifications (newest first)
       operationId: listMyNotifications
       parameters:
@@ -543,6 +548,8 @@ paths:
                 $ref: '#/components/schemas/NotificationPage'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /me/notifications/{notificationId}:
     parameters:
       - name: notificationId
@@ -551,7 +558,8 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     patch:
-      tags: [Account]
+      tags:
+        - Account
       summary: Mark a notification as read
       operationId: updateMyNotification
       requestBody:
@@ -573,13 +581,10 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # PUBLIC CATALOG
-  # =====================================================================
   /settings/public:
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: Public platform settings (name, language, currency)
       operationId: getPublicSettings
       security: []
@@ -592,7 +597,8 @@ paths:
                 $ref: '#/components/schemas/PublicSettings'
   /categories:
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: List active categories
       operationId: listCategories
       security: []
@@ -607,7 +613,8 @@ paths:
                   $ref: '#/components/schemas/Category'
   /seasons:
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: List seasons
       description: For the season filter and "season boxes" on the home page (§2, §3.1).
       operationId: listSeasons
@@ -619,18 +626,21 @@ paths:
           description: Computed from the dates (A-10).
           schema:
             $ref: '#/components/schemas/SeasonStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Seasons.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Season'
+                $ref: '#/components/schemas/SeasonPage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /grandmas:
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: List grandmas
       description: |
         "جدّاتنا" and grandma of the month on the home page (§3.1). Returns `active` and `unavailable` grandmas.
@@ -664,7 +674,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/GrandmaId'
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: Grandma page
       description: Story, bio, recipes, active voice messages and computed rating (§3.3). Products come from `GET /products?grandma_id=`.
       operationId: getGrandma
@@ -680,7 +691,8 @@ paths:
           $ref: '#/components/responses/NotFound'
   /products:
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: List active products of a sales channel
       description: |
         `channel=regular` (default) is the general store (§3.2). `shipping` is the shipping catalog (§3.6-أ); choosing a
@@ -731,7 +743,12 @@ paths:
           description: Sort order (§3.2).
           schema:
             type: string
-            enum: [most_ordered, newest, price_asc, price_desc, rating]
+            enum:
+              - most_ordered
+              - newest
+              - price_asc
+              - price_desc
+              - rating
             default: newest
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -748,7 +765,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/ProductId'
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: Product or box details
       description: For a box, `box` contains its contents. The QR voice message is resolved by uuid (§3.4, §3.5).
       operationId: getProduct
@@ -772,7 +790,8 @@ paths:
           type: string
           format: uuid
     get:
-      tags: [Catalog]
+      tags:
+        - Catalog
       summary: Public QR voice-message page
       description: |
         Opened by scanning the QR in a box (§3.5, §7). It shows no order or sender data. Returns `404` if the uuid is unknown
@@ -788,13 +807,10 @@ paths:
                 $ref: '#/components/schemas/VoiceMessagePublic'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # =====================================================================
-  # CHECKOUT REFERENCE DATA
-  # =====================================================================
   /delivery-zones:
     get:
-      tags: [Checkout Reference Data]
+      tags:
+        - Checkout Reference Data
       summary: List active service zones with fees
       operationId: listDeliveryZones
       security: []
@@ -809,7 +825,8 @@ paths:
                   $ref: '#/components/schemas/DeliveryZone'
   /shipping-countries:
     get:
-      tags: [Checkout Reference Data]
+      tags:
+        - Checkout Reference Data
       summary: List supported shipping countries with predefined fees
       operationId: listShippingCountries
       security: []
@@ -824,7 +841,8 @@ paths:
                   $ref: '#/components/schemas/ShippingCountry'
   /payment-methods:
     get:
-      tags: [Checkout Reference Data]
+      tags:
+        - Checkout Reference Data
       summary: List active payment methods
       description: Cash on delivery is for regular or scheduled orders only. Everything else is electronic (§5).
       operationId: listPaymentMethods
@@ -840,12 +858,10 @@ paths:
                   $ref: '#/components/schemas/PaymentMethod'
   /delivery/availability:
     get:
-      tags: [Checkout Reference Data]
+      tags:
+        - Checkout Reference Data
       summary: Available local-delivery dates and periods
-      description: |
-        Uses delivery slots, holidays and `DeliverySetting.min_preparation_hours` (§9.1). No returned date is earlier than
-        **today + the longest `lead_time_days`** of `product_ids` (§4). `earliest` is the slot auto-assigned to non-scheduled
-        regular orders. Production capacity is not checked (§4, §15).
+      description: 'Fixed rule from ADR-021: every calendar day is deliverable. A returned date is at least `today + longest lead_time_days` of the requested products and each returned period starts at least `min_preparation_hours` from now. No holiday, capacity or slot check. Window: 14 days default, 60 days maximum.'
       operationId: getDeliveryAvailability
       security: []
       parameters:
@@ -881,13 +897,10 @@ paths:
                 $ref: '#/components/schemas/DeliveryAvailability'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # ORDERS (customer)
-  # =====================================================================
   /orders/preview:
     post:
-      tags: [Orders]
+      tags:
+        - Orders
       summary: Re-validate the cart and price it (no order is created)
       description: |
         The cart is in LocalStorage (§5). The backend re-checks products, prices, stock, channel, single grandma, zone,
@@ -913,7 +926,8 @@ paths:
           $ref: '#/components/responses/OrderValidationError'
   /orders:
     get:
-      tags: [Orders]
+      tags:
+        - Orders
       summary: My orders
       description: All order types on one page (§3.9-ج). Subscription deliveries are not orders (§6).
       operationId: listMyOrders
@@ -921,10 +935,14 @@ paths:
         - name: status_group
           in: query
           required: false
-          description: UI tabs. `in_progress` = non-terminal; `completed` = delivered; `cancelled_or_rejected`.
+          description: UI tabs. `in_progress` = non-terminal; `completed` = delivered; `cancelled`.
           schema:
             type: string
-            enum: [all, in_progress, completed, cancelled_or_rejected]
+            enum:
+              - all
+              - in_progress
+              - completed
+              - cancelled_or_rejected
             default: all
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -937,22 +955,13 @@ paths:
                 $ref: '#/components/schemas/OrderSummaryPage'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
-      tags: [Orders]
+      tags:
+        - Orders
       summary: Create an order (unified checkout)
-      description: |
-        **By order type (§5)**
-        - `regular`: created with `payment_method_id`.
-          - Cash on delivery: `pending` / `unpaid`, stock reserved, no payment transaction.
-          - Electronic: created `awaiting_payment` / `unpaid`, stock reserved. The client then calls `POST /payments`
-            with the new `order_id`. A successful webhook moves the order to `pending` / `paid` (ADR-003).
-          - Scheduling is computed from the items (§4). Any `made_to_order` item makes the order scheduled, and then
-            `delivery_date` and `delivery_period_id` are required. Otherwise the nearest slot is assigned.
-        - `shipping` / `event`: created as `pending` with no payment. Payment happens after approval (§5-ب, §5-ج).
-
-        **Server-side validation (§5)** returns `422` with a `details[].code` per failure. A price or availability change
-        since the cart was built returns `409 PRICE_CHANGED` with a fresh preview. The order is created only after the
-        customer accepts the new total (§5).
+      description: Cart contents are revalidated and priced by the server. `pending` / `unpaid` on creation. Regular orders may be cash or electronic; shipping and event orders must be electronic and `paid` before confirmation (ADR-020). One order row holds every order type.
       operationId: createOrder
       requestBody:
         required: true
@@ -962,7 +971,7 @@ paths:
               $ref: '#/components/schemas/CreateOrderRequest'
       responses:
         '201':
-          description: Order created. Regular electronic orders start `awaiting_payment`; cash orders start `pending` / `unpaid`.
+          description: Order created. Every order starts `pending` / `unpaid`; a successful electronic payment sets `paid`.
           headers:
             Location:
               description: URL of the new order.
@@ -986,7 +995,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     get:
-      tags: [Orders]
+      tags:
+        - Orders
       summary: My order details and timeline
       description: |
         Items, type details, timeline, reasons, refunds, and the backend-computed `can_cancel` and `cancel_deadline`
@@ -1007,11 +1017,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     post:
-      tags: [Orders]
+      tags:
+        - Orders
       summary: Cancel my order
       description: |
         Allowed only when `can_cancel` is true (§3.9-ج, §4). The policy is not defined (M-08). The reason is optional for customers.
-        Refunds of electronic payments are recorded by an admin (§11.2).
+        Refunds of electronic payments are recorded by an admin (spec §11.2).
       operationId: cancelMyOrder
       requestBody:
         required: false
@@ -1034,64 +1045,12 @@ paths:
           $ref: '#/components/responses/InvalidTransition'
         '422':
           $ref: '#/components/responses/ValidationError'
-  /orders/{orderId}/items/{orderItemId}/review:
-    parameters:
-      - $ref: '#/components/parameters/OrderId'
-      - name: orderItemId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    post:
-      tags: [Reviews]
-      summary: Review a product of a delivered order
-      description: |
-        Only when the order is `delivered`. One review per order item (unique `order_item_id`). Published immediately (§3.9).
-        Editing or deleting reviews is not specified (A-14), so no endpoint is exposed for it.
-      operationId: createReview
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ReviewInput'
-      responses:
-        '201':
-          description: Published.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/Review'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # PAYMENTS
-  # =====================================================================
   /payments:
     post:
-      tags: [Payments]
+      tags:
+        - Payments
       summary: Start an electronic payment
-      description: |
-        Creates a `PaymentTransaction` (`pending`) for exactly one target. The **amount is always computed by the server**
-        and never taken from the client:
-        - `order_id`: a `regular` order in `awaiting_payment`, or a `shipping` or `event` order in `awaiting_payment`
-          before its `payment_deadline` ("Pay now", §3.9-ج).
-        - `subscription_id`: a `pending_payment` subscription before its `payment_deadline` (§6). It pays `total_price`.
-
-        Exactly one of `order_id` and `subscription_id` is required. A successful payment moves a regular order to
-        `pending` / `paid`, a shipping or event order to `confirmed` / `paid`, and a subscription to `active` (ADR-003, ADR-005).
-
-        The payment method must be an active `electronic` method. The final status arrives asynchronously through
-        `POST /payments/webhook`. Poll `GET /payments/{paymentId}` meanwhile.
-        **Open:** the gateway handoff data (redirect URL, client token) is provider-specific and not in the ERD (M-05).
-        It is returned in the transient, unstored `gateway_action` object.
+      description: Creates a `PaymentTransaction` for an `order_id` (ADR-020) or a `subscription_id`. The server computes the amount. A successful webhook sets `payment_status = paid`; the order stays `pending` and can then be confirmed. Payment method must be active and electronic.
       operationId: createPayment
       requestBody:
         required: true
@@ -1122,7 +1081,8 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     get:
-      tags: [Payments]
+      tags:
+        - Payments
       summary: Get a payment transaction status
       description: Used while waiting for the gateway result. Visible only to the customer who started it (see the ownership gap above).
       operationId: getPayment
@@ -1139,16 +1099,10 @@ paths:
           $ref: '#/components/responses/NotFound'
   /payments/webhook:
     post:
-      tags: [Payments]
+      tags:
+        - Payments
       summary: Payment gateway callback (server-to-server)
-      description: |
-        Called by the gateway, not by clients. Processing is **idempotent on `gateway_reference`** (unique in ERD v2). A replay
-        of an already-final transaction returns `200` and changes nothing. Effects:
-        - `succeeded` + order: `payment_status = paid`. A `shipping` or `event` order in `awaiting_payment` moves to `confirmed`, with a history row.
-        - `succeeded` + subscription: the subscription becomes `active`, and deliveries and the notification are generated.
-        - `failed`: `failure_reason` is stored. A linked order gets `payment_status = failed` (§10.3).
-        A success that arrives after the payment deadline has expired the order or subscription is not covered by the requirements.
-        **Authentication** is by gateway signature. The header name and algorithm depend on the provider (M-05).
+      description: Gateway callback. Idempotent on `gateway_reference`. Success sets `payment_status = paid`; failure stores `failure_reason` and leaves the order `pending` / `unpaid`. Signature header and algorithm depend on the vendor (Q1).
       operationId: paymentWebhook
       security: []
       requestBody:
@@ -1164,13 +1118,10 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
-
-  # =====================================================================
-  # SUBSCRIPTIONS (public + customer)
-  # =====================================================================
   /subscription-plans:
     get:
-      tags: [Subscriptions]
+      tags:
+        - Subscriptions
       summary: List available plans
       description: Only `availability_status = active` plans, grouped in the UI by type (§3.7).
       operationId: listSubscriptionPlans
@@ -1195,11 +1146,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubscriptionPlanPage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /subscription-plans/{planId}:
     parameters:
       - $ref: '#/components/parameters/PlanId'
     get:
-      tags: [Subscriptions]
+      tags:
+        - Subscriptions
       summary: Plan details
       description: |
         `price` covers the boxes only (ERD v2). Delivery fees depend on the zone of the chosen address and are added at
@@ -1217,7 +1171,8 @@ paths:
           $ref: '#/components/responses/NotFound'
   /subscriptions:
     get:
-      tags: [Subscriptions]
+      tags:
+        - Subscriptions
       summary: My subscriptions (current and past)
       operationId: listMySubscriptions
       parameters:
@@ -1237,8 +1192,11 @@ paths:
                 $ref: '#/components/schemas/SubscriptionPage'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
-      tags: [Subscriptions]
+      tags:
+        - Subscriptions
       summary: Subscribe to a plan
       description: |
         Does not go through the cart (§6). The plan must be `active` and the address must be in an active zone.
@@ -1274,7 +1232,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SubscriptionId'
     get:
-      tags: [Subscriptions]
+      tags:
+        - Subscriptions
       summary: One of my subscriptions with deliveries
       operationId: getMySubscription
       responses:
@@ -1292,7 +1251,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SubscriptionId'
     post:
-      tags: [Subscriptions]
+      tags:
+        - Subscriptions
       summary: Request cancellation of my subscription
       description: |
         Reviewed by an admin. The platform policy decides the money for the remaining deliveries (§3.9-د, §6).
@@ -1319,19 +1279,19 @@ paths:
           $ref: '#/components/responses/InvalidTransition'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # ADMIN - DASHBOARD
-  # =====================================================================
   /admin/dashboard:
     get:
-      tags: [Admin - Dashboard]
+      tags:
+        - Admin - Dashboard
       summary: Dashboard home
       description: |
-        Stat cards, follow-up lists, latest orders and upcoming deliveries (§11.1). Each block is shown only if the admin
+        Stat cards, follow-up lists, latest orders and upcoming deliveries (spec §14). Each block is shown only if the admin
         has that section's permission. The dashboard has no permission of its own (M-02).
       operationId: adminGetDashboard
-      x-required-permission: any-admin
+      x-required-permission:
+        - dashboard.view_stats
+        - dashboard.view_attention_orders
+        - dashboard.view_upcoming_deliveries
       responses:
         '200':
           description: Dashboard.
@@ -1343,19 +1303,16 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-
-  # =====================================================================
-  # ADMIN - ORDERS
-  # =====================================================================
   /admin/orders:
     get:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: All orders (single table, every type)
       description: |
         Event and gift views are read-only and scoped server-side: `events` holders can read only `order_type = event`,
         and `gifts` holders can read only `is_gift = true`. A holder of `orders` can read all order types.
       operationId: adminListOrders
-      x-required-permission: [orders, events, gifts]
+      x-required-permission: orders.view
       parameters:
         - name: status
           in: query
@@ -1411,7 +1368,11 @@ paths:
           description: Scheduled orders can be sorted by preparation start or delivery date (§11.3).
           schema:
             type: string
-            enum: [created_at_desc, created_at_asc, delivery_date, prepare_start_date, payment_deadline]
+            enum:
+              - created_at_desc
+              - created_at_asc
+              - delivery_date
+              - prepare_start_date
             default: created_at_desc
         - $ref: '#/components/parameters/Page'
         - $ref: '#/components/parameters/Limit'
@@ -1432,14 +1393,15 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     get:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Order details (admin view)
       description: |
-        Includes the customer, grandma contact and order hours (admin only), payment transactions, timeline and refunds (§11.2).
+        Includes the customer, grandma contact and order hours (admin only), payment transactions, timeline and refunds (spec §11.2).
         The "copy/print summary for the grandma" is rendered by the frontend from this payload. An `events` holder can
         retrieve only an event order; a `gifts` holder can retrieve only a gift order.
       operationId: adminGetOrder
-      x-required-permission: [orders, events, gifts]
+      x-required-permission: orders.view
       responses:
         '200':
           description: Order.
@@ -1454,13 +1416,14 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Update delivery note or mark a cash order as paid
       description: |
         There is no driver role. The admin may update the delivery-responsible note (§9.1), or mark a cash-on-delivery
         order as `paid`. `payment_status` accepts only `paid` and is valid only for cash orders.
       operationId: adminUpdateOrderNote
-      x-required-permission: orders
+      x-required-permission: orders.manage_payment_shipping
       requestBody:
         required: true
         content:
@@ -1488,16 +1451,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     post:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Approve a pending order
-      description: |
-        From `pending` only (§11.2):
-        - `regular` (incl. scheduled) → `confirmed`.
-        - `shipping` / `event` → `awaiting_payment`, with `payment_deadline` = now + `payment_deadline_minutes`.
-          Sends notification `order_approved_payment_requested`.
-        Every status change inserts an `OrderStatusHistory` row.
+      description: From `pending`. Regular orders move to `confirmed`. Shipping and event orders move to `confirmed` only when `payment_status = paid` (ADR-020). Every status change inserts an `OrderStatusHistory` row.
       operationId: adminApproveOrder
-      x-required-permission: orders
+      x-required-permission: orders.accept_reject
       responses:
         '200':
           description: Approved.
@@ -1517,11 +1476,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     post:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Reject a pending order with a reason
-      description: From `pending` only (§10.2). The reason is required (§11.2). Sends notification `order_rejected`.
+      description: Rejects a `pending` order by moving it to `cancelled` and recording `cancel_reason` (spec spec §11.2). Every status change inserts an `OrderStatusHistory` row.
       operationId: adminRejectOrder
-      x-required-permission: orders
+      x-required-permission: orders.accept_reject
       requestBody:
         required: true
         content:
@@ -1549,17 +1509,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     post:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Advance the preparation or delivery status
-      description: |
-        Allowed paths (§10.2):
-        - regular / scheduled / event: confirmed → preparing → ready → out_for_delivery → delivered
-        - shipping: confirmed → preparing → shipped → in_transit → delivered
-        Scheduled orders stay `confirmed` until `prepare_start_date`. The admin then moves them on manually (§4).
-        `shipped` requires the shipment to be recorded first. Every change adds a history row and sends notification
-        `order_status_changed`.
+      description: 'Allowed path for every order type: `confirmed → preparing → ready → out_for_delivery → delivered` (spec §10.2). The company name and tracking number are free text entered at `out_for_delivery`. Every change adds a history row and notification.'
       operationId: adminUpdateOrderStatus
-      x-required-permission: orders
+      x-required-permission: orders.update_status
       requestBody:
         required: true
         content:
@@ -1587,11 +1542,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     put:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Record shipping company and tracking number
-      description: Shipping orders only (§11.2).
+      description: Shipping orders only (spec §11.2).
       operationId: adminSetShipment
-      x-required-permission: orders
+      x-required-permission: orders.manage_payment_shipping
       requestBody:
         required: true
         content:
@@ -1619,11 +1575,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     post:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Cancel an order with a reason
-      description: The reason is required (§11.2). Cancellable stages are not defined (M-08), so `delivered` and other terminal states are refused.
+      description: The reason is required (spec §11.2). Cancellable stages are not defined (M-08), so `delivered` and other terminal states are refused.
       operationId: adminCancelOrder
-      x-required-permission: orders
+      x-required-permission: orders.cancel
       requestBody:
         required: true
         content:
@@ -1651,13 +1608,14 @@ paths:
     parameters:
       - $ref: '#/components/parameters/OrderId'
     post:
-      tags: [Admin - Orders]
+      tags:
+        - Admin - Orders
       summary: Record a refund (full or partial)
       description: |
-        Refunds are made manually and recorded here (§11.2, §10.3). `amount` > 0, and the total refunded must not exceed the paid
+        Refunds are made manually and recorded here (spec §11.2, §10.3). `amount` > 0, and the total refunded must not exceed the paid
         amount. When `payment_status` becomes `refunded` after a partial refund is open (C-04).
       operationId: adminCreateOrderRefund
-      x-required-permission: orders
+      x-required-permission: orders.manage_payment_shipping
       requestBody:
         required: true
         content:
@@ -1681,16 +1639,13 @@ paths:
           $ref: '#/components/responses/Conflict'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # ADMIN - GRANDMAS
-  # =====================================================================
   /admin/grandmas:
     get:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: List grandmas
       operationId: adminListGrandmas
-      x-required-permission: grandmas
+      x-required-permission: grandmas.view
       parameters:
         - name: status
           in: query
@@ -1716,11 +1671,14 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Add a grandma
       operationId: adminCreateGrandma
-      x-required-permission: grandmas
+      x-required-permission: grandmas.create_edit
       requestBody:
         required: true
         content:
@@ -1744,10 +1702,11 @@ paths:
     parameters:
       - $ref: '#/components/parameters/GrandmaId'
     get:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Get a grandma (admin view)
       operationId: adminGetGrandma
-      x-required-permission: grandmas
+      x-required-permission: grandmas.view
       responses:
         '200':
           description: Grandma.
@@ -1762,13 +1721,14 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     put:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Update a grandma
       description: |
         `unavailable` blocks new orders for her products, while existing orders continue (§10.4). Effects on plans and
         subscriptions are open (M-20). Grandma deletion is not documented, so there is no DELETE.
       operationId: adminUpdateGrandma
-      x-required-permission: grandmas
+      x-required-permission: grandmas.create_edit
       requestBody:
         required: true
         content:
@@ -1794,11 +1754,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/GrandmaId'
     put:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Make this grandma the grandma of the month
       description: Only one at a time (ERD v2 partial unique index). The previous one is unset in the same transaction (§11.4).
       operationId: adminSetGrandmaOfMonth
-      x-required-permission: grandmas
+      x-required-permission: grandmas.set_of_month
       responses:
         '200':
           description: Set.
@@ -1818,10 +1779,11 @@ paths:
     parameters:
       - $ref: '#/components/parameters/GrandmaId'
     get:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: List a grandma's recipes
       operationId: adminListRecipes
-      x-required-permission: grandmas
+      x-required-permission: grandmas.view
       responses:
         '200':
           description: Recipes.
@@ -1838,10 +1800,11 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     post:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Add a recipe
       operationId: adminCreateRecipe
-      x-required-permission: grandmas
+      x-required-permission: grandmas.create_edit
       requestBody:
         required: true
         content:
@@ -1871,10 +1834,11 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     put:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Update a recipe
       operationId: adminUpdateRecipe
-      x-required-permission: grandmas
+      x-required-permission: grandmas.create_edit
       requestBody:
         required: true
         content:
@@ -1897,10 +1861,11 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
     delete:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Delete a recipe
       operationId: adminDeleteRecipe
-      x-required-permission: grandmas
+      x-required-permission: grandmas.create_edit
       responses:
         '204':
           description: Deleted.
@@ -1914,10 +1879,11 @@ paths:
     parameters:
       - $ref: '#/components/parameters/GrandmaId'
     get:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: List a grandma's voice messages (with QR uuid)
       operationId: adminListVoiceMessages
-      x-required-permission: grandmas
+      x-required-permission: grandmas.view
       responses:
         '200':
           description: Voice messages.
@@ -1934,11 +1900,12 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     post:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Add a voice message
       description: The server generates `uuid` (the public QR token). A grandma can have several messages (§3.3).
       operationId: adminCreateVoiceMessage
-      x-required-permission: grandmas
+      x-required-permission: grandmas.create_edit
       requestBody:
         required: true
         content:
@@ -1968,11 +1935,12 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     put:
-      tags: [Admin - Grandmas]
+      tags:
+        - Admin - Grandmas
       summary: Update a voice message (incl. active/inactive)
       description: '`inactive` disables QR playback (ERD v2). The `uuid` never changes.'
       operationId: adminUpdateVoiceMessage
-      x-required-permission: grandmas
+      x-required-permission: grandmas.create_edit
       requestBody:
         required: true
         content:
@@ -1994,17 +1962,16 @@ paths:
           $ref: '#/components/responses/NotFound'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # ADMIN - CATALOG
-  # =====================================================================
   /admin/categories:
     get:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: List all categories (incl. hidden)
       description: Read-only reference data for product forms; `products` or `categories` is sufficient. Mutations require `categories`.
       operationId: adminListCategories
-      x-required-permission: [products, categories]
+      x-required-permission:
+        - products.view
+        - products.create_edit
       responses:
         '200':
           description: Categories.
@@ -2019,11 +1986,12 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Add a category
       description: '`name` is unique. Rules that depend on the "Boxes" and "Cooked dishes" categories need an identification method (M-23).'
       operationId: adminCreateCategory
-      x-required-permission: categories
+      x-required-permission: products.create_edit
       requestBody:
         required: true
         content:
@@ -2053,10 +2021,11 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     put:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Update a category (name, active/hidden)
       operationId: adminUpdateCategory
-      x-required-permission: categories
+      x-required-permission: products.create_edit
       requestBody:
         required: true
         content:
@@ -2082,11 +2051,14 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /admin/seasons:
     get:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: List seasons
       description: Read-only reference data for product forms; `products` or `categories` is sufficient. Mutations require `categories`.
       operationId: adminListSeasons
-      x-required-permission: [products, categories]
+      x-required-permission:
+        - products.view
+        - products.create_edit
       responses:
         '200':
           description: Seasons.
@@ -2101,11 +2073,12 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
     post:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Create a season
       description: '`end_date` ≥ `start_date`. Products and plans are linked through their own `season_id` (§11.6).'
       operationId: adminCreateSeason
-      x-required-permission: categories
+      x-required-permission: products.create_edit
       requestBody:
         required: true
         content:
@@ -2133,10 +2106,11 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     put:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Update a season
       operationId: adminUpdateSeason
-      x-required-permission: categories
+      x-required-permission: products.create_edit
       requestBody:
         required: true
         content:
@@ -2160,10 +2134,11 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /admin/products:
     get:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: List products (any status)
       operationId: adminListProducts
-      x-required-permission: products
+      x-required-permission: products.view
       parameters:
         - name: q
           in: query
@@ -2209,17 +2184,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Create a product or a box
       description: |
-        With `box` set, the product is created as a box, which needs the `boxes_gifts` permission (§11.10). Rules:
+        With `box` set, the product is created as a box, which needs the `boxes_gifts` permission (spec §140). Rules:
         - `made_to_order` ⇒ `lead_time_days > 0` and `allow_scheduling = true` (ERD v2 CHECK, §4).
         - `ready` ⇒ `stock` required. `made_to_order` ⇒ `stock` null.
         - `channels.shipping` is refused for the "Cooked dishes" category (§3.6). For a box, every content item must be shippable (§3.5).
         - A box's `voice_message_id` must belong to the same grandma (§3.5).
       operationId: adminCreateProduct
-      x-required-permission: products
+      x-required-permission: products.create_edit
       requestBody:
         required: true
         content:
@@ -2243,10 +2221,11 @@ paths:
     parameters:
       - $ref: '#/components/parameters/ProductId'
     get:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Get a product (admin view)
       operationId: adminGetProduct
-      x-required-permission: products
+      x-required-permission: products.view
       responses:
         '200':
           description: Product.
@@ -2261,11 +2240,12 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     put:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Update a product or box
       description: Same rules as create. Withdraw a product with `status = hidden`. Product deletion is not documented, so there is no DELETE.
       operationId: adminUpdateProduct
-      x-required-permission: products
+      x-required-permission: products.create_edit
       requestBody:
         required: true
         content:
@@ -2291,10 +2271,11 @@ paths:
     parameters:
       - $ref: '#/components/parameters/ProductId'
     post:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Add a product image
       operationId: adminAddProductImage
-      x-required-permission: products
+      x-required-permission: products.create_edit
       requestBody:
         required: true
         content:
@@ -2325,10 +2306,11 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     delete:
-      tags: [Admin - Catalog]
+      tags:
+        - Admin - Catalog
       summary: Remove a product image
       operationId: adminDeleteProductImage
-      x-required-permission: products
+      x-required-permission: products.create_edit
       responses:
         '204':
           description: Removed.
@@ -2338,16 +2320,13 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # =====================================================================
-  # ADMIN - SUBSCRIPTIONS
-  # =====================================================================
   /admin/subscription-plans:
     get:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: List plans (any availability)
       operationId: adminListPlans
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.view
       parameters:
         - name: plan_type
           in: query
@@ -2377,12 +2356,15 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Create a plan
       description: One grandma per plan (§6). `price` covers the boxes only, without delivery fees (ERD v2).
       operationId: adminCreatePlan
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.manage_plans
       requestBody:
         required: true
         content:
@@ -2406,10 +2388,11 @@ paths:
     parameters:
       - $ref: '#/components/parameters/PlanId'
     get:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Get a plan
       operationId: adminGetPlan
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.view
       responses:
         '200':
           description: Plan.
@@ -2424,11 +2407,12 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     put:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Update a plan
       description: Existing subscriptions keep their price snapshot (`subtotal`, `fee_amount`, `total_price`).
       operationId: adminUpdatePlan
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.manage_plans
       requestBody:
         required: true
         content:
@@ -2451,11 +2435,12 @@ paths:
         '422':
           $ref: '#/components/responses/ValidationError'
     delete:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Delete a plan
       description: Allowed by §11.7. Returns `409` while subscriptions reference it. Use `availability_status = unavailable` instead.
       operationId: adminDeletePlan
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.manage_plans
       responses:
         '204':
           description: Deleted.
@@ -2469,10 +2454,11 @@ paths:
           $ref: '#/components/responses/Conflict'
   /admin/subscriptions:
     get:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: List customer subscriptions
       operationId: adminListSubscriptions
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.view
       parameters:
         - name: status
           in: query
@@ -2507,14 +2493,17 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /admin/subscriptions/{subscriptionId}:
     parameters:
       - $ref: '#/components/parameters/SubscriptionId'
     get:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Subscription with deliveries, requests, transactions and refunds
       operationId: adminGetSubscription
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.view
       responses:
         '200':
           description: Subscription.
@@ -2532,11 +2521,12 @@ paths:
     parameters:
       - $ref: '#/components/parameters/SubscriptionId'
     post:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Record a subscription refund
       description: The amount follows the platform policy for remaining deliveries (§6). The policy is not defined (A-09).
       operationId: adminCreateSubscriptionRefund
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.update_delivery_status
       requestBody:
         required: true
         content:
@@ -2562,10 +2552,11 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /admin/subscription-cancellation-requests:
     get:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: List cancellation requests
       operationId: adminListCancellationRequests
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.view
       parameters:
         - name: status
           in: query
@@ -2585,17 +2576,20 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /admin/subscription-cancellation-requests/{requestId}/approve:
     parameters:
       - $ref: '#/components/parameters/CancellationRequestId'
     post:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Approve a cancellation request
       description: |
         Subscription → `cancelled`. Its remaining `scheduled` deliveries → `cancelled` (§6). `reviewed_by` and `reviewed_at`
         are recorded. The refund is recorded in the same transaction using the required `amount` and `reason`.
       operationId: adminApproveCancellationRequest
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.update_delivery_status
       requestBody:
         required: true
         content:
@@ -2621,10 +2615,11 @@ paths:
     parameters:
       - $ref: '#/components/parameters/CancellationRequestId'
     post:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Reject a cancellation request
       operationId: adminRejectCancellationRequest
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.update_delivery_status
       responses:
         '200':
           description: Rejected.
@@ -2642,10 +2637,11 @@ paths:
           $ref: '#/components/responses/InvalidTransition'
   /admin/subscription-deliveries:
     get:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Subscription deliveries by date ("upcoming deliveries")
       operationId: adminListSubscriptionDeliveries
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.view_deliveries
       parameters:
         - name: status
           in: query
@@ -2682,6 +2678,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /admin/subscription-deliveries/{deliveryId}:
     parameters:
       - name: deliveryId
@@ -2690,11 +2688,12 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     patch:
-      tags: [Admin - Subscriptions]
+      tags:
+        - Admin - Subscriptions
       summary: Change a delivery's status
       description: scheduled → preparing → delivered, or → cancelled by admin decision (§6). When every delivery is delivered, the subscription becomes `completed`.
       operationId: adminUpdateSubscriptionDelivery
-      x-required-permission: subscriptions
+      x-required-permission: subscriptions.update_delivery_status
       requestBody:
         required: true
         content:
@@ -2718,528 +2717,14 @@ paths:
           $ref: '#/components/responses/InvalidTransition'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # ADMIN - DELIVERY & SHIPPING SETTINGS
-  # =====================================================================
-  /admin/delivery-zones:
-    get:
-      tags: [Admin - Delivery & Shipping]
-      summary: List zones (incl. inactive)
-      operationId: adminListDeliveryZones
-      x-required-permission: delivery
-      responses:
-        '200':
-          description: Zones.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DeliveryZoneAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Admin - Delivery & Shipping]
-      summary: Add a zone
-      operationId: adminCreateDeliveryZone
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeliveryZoneInput'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeliveryZoneAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/delivery-zones/{zoneId}:
-    parameters:
-      - name: zoneId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    put:
-      tags: [Admin - Delivery & Shipping]
-      summary: Update a zone (name, fee, active)
-      description: Zones are deactivated, not deleted, because addresses and orders reference them.
-      operationId: adminUpdateDeliveryZone
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeliveryZoneInput'
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeliveryZoneAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/delivery-periods:
-    get:
-      tags: [Admin - Delivery & Shipping]
-      summary: List delivery periods
-      operationId: adminListDeliveryPeriods
-      x-required-permission: delivery
-      responses:
-        '200':
-          description: Periods.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DeliveryPeriodAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Admin - Delivery & Shipping]
-      summary: Add a delivery period
-      operationId: adminCreateDeliveryPeriod
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeliveryPeriodInput'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeliveryPeriodAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/delivery-periods/{periodId}:
-    parameters:
-      - name: periodId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    put:
-      tags: [Admin - Delivery & Shipping]
-      summary: Update a delivery period
-      operationId: adminUpdateDeliveryPeriod
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeliveryPeriodInput'
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeliveryPeriodAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-    delete:
-      tags: [Admin - Delivery & Shipping]
-      summary: Delete a delivery period
-      description: Returns `409` while orders or slots reference it.
-      operationId: adminDeleteDeliveryPeriod
-      x-required-permission: delivery
-      responses:
-        '204':
-          description: Deleted.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-  /admin/delivery-slots:
-    get:
-      tags: [Admin - Delivery & Shipping]
-      summary: List weekday × period delivery slots
-      operationId: adminListDeliverySlots
-      x-required-permission: delivery
-      responses:
-        '200':
-          description: Slots.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/DeliverySlot'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Admin - Delivery & Shipping]
-      summary: Offer a period on a weekday
-      operationId: adminCreateDeliverySlot
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeliverySlotInput'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeliverySlot'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/delivery-slots/{slotId}:
-    parameters:
-      - name: slotId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    delete:
-      tags: [Admin - Delivery & Shipping]
-      summary: Remove a delivery slot
-      operationId: adminDeleteDeliverySlot
-      x-required-permission: delivery
-      responses:
-        '204':
-          description: Removed.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /admin/holidays:
-    get:
-      tags: [Admin - Delivery & Shipping]
-      summary: List holidays
-      operationId: adminListHolidays
-      x-required-permission: delivery
-      responses:
-        '200':
-          description: Holidays.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/HolidayAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Admin - Delivery & Shipping]
-      summary: Add a holiday (unique date)
-      operationId: adminCreateHoliday
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/HolidayInput'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/HolidayAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/holidays/{holidayId}:
-    parameters:
-      - name: holidayId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    delete:
-      tags: [Admin - Delivery & Shipping]
-      summary: Remove a holiday
-      operationId: adminDeleteHoliday
-      x-required-permission: delivery
-      responses:
-        '204':
-          description: Removed.
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-  /admin/settings/delivery:
-    get:
-      tags: [Admin - Delivery & Shipping]
-      summary: Get delivery settings
-      operationId: adminGetDeliverySettings
-      x-required-permission: delivery
-      responses:
-        '200':
-          description: Settings.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeliverySettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    put:
-      tags: [Admin - Delivery & Shipping]
-      summary: Update the minimum preparation (hours)
-      operationId: adminUpdateDeliverySettings
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DeliverySettingsInput'
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DeliverySettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/shipping-countries:
-    get:
-      tags: [Admin - Delivery & Shipping]
-      summary: List countries (incl. inactive)
-      operationId: adminListShippingCountries
-      x-required-permission: delivery
-      responses:
-        '200':
-          description: Countries.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ShippingCountryAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Admin - Delivery & Shipping]
-      summary: Add a supported country with its fee
-      operationId: adminCreateShippingCountry
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ShippingCountryInput'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ShippingCountryAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/shipping-countries/{countryId}:
-    parameters:
-      - name: countryId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    put:
-      tags: [Admin - Delivery & Shipping]
-      summary: Update a country (name, fee, active)
-      operationId: adminUpdateShippingCountry
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ShippingCountryInput'
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ShippingCountryAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/shipping-companies:
-    get:
-      tags: [Admin - Delivery & Shipping]
-      summary: List shipping companies
-      operationId: adminListShippingCompanies
-      x-required-permission: delivery
-      responses:
-        '200':
-          description: Companies.
-          content:
-            application/json:
-              schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ShippingCompanyAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-    post:
-      tags: [Admin - Delivery & Shipping]
-      summary: Add a shipping company
-      operationId: adminCreateShippingCompany
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ShippingCompanyInput'
-      responses:
-        '201':
-          description: Created.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ShippingCompanyAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-  /admin/shipping-companies/{companyId}:
-    parameters:
-      - name: companyId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    put:
-      tags: [Admin - Delivery & Shipping]
-      summary: Rename a shipping company
-      operationId: adminUpdateShippingCompany
-      x-required-permission: delivery
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/ShippingCompanyInput'
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ShippingCompanyAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-        '422':
-          $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # ADMIN - CUSTOMERS
-  # =====================================================================
   /admin/customers:
     get:
-      tags: [Admin - Customers]
+      tags:
+        - Admin - Customers
       summary: List customer accounts
-      description: View only (§11.11). History comes from `/admin/orders?customer_id=` and `/admin/subscriptions?customer_id=`.
+      description: View only (spec §141). History comes from `/admin/orders?customer_id=` and `/admin/subscriptions?customer_id=`.
       operationId: adminListCustomers
-      x-required-permission: customers
+      x-required-permission: customers.view
       parameters:
         - name: q
           in: query
@@ -3261,6 +2746,8 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
   /admin/customers/{customerId}:
     parameters:
       - name: customerId
@@ -3269,10 +2756,11 @@ paths:
         schema:
           $ref: '#/components/schemas/Id'
     get:
-      tags: [Admin - Customers]
+      tags:
+        - Admin - Customers
       summary: Customer account with active addresses
       operationId: adminGetCustomer
-      x-required-permission: customers
+      x-required-permission: customers.view
       responses:
         '200':
           description: Customer.
@@ -3286,17 +2774,14 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
-
-  # =====================================================================
-  # ADMIN - REPORTS
-  # =====================================================================
   /admin/reports/sales:
     get:
-      tags: [Admin - Reports]
+      tags:
+        - Admin - Reports
       summary: Orders and sales report
-      description: By period, order type and grandma (§11.12).
+      description: By period, order type and grandma (spec §142).
       operationId: adminSalesReport
-      x-required-permission: reports
+      x-required-permission: reports.orders_sales
       parameters:
         - $ref: '#/components/parameters/ReportDateFrom'
         - $ref: '#/components/parameters/ReportDateTo'
@@ -3310,6 +2795,8 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/Id'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Report.
@@ -3325,10 +2812,11 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /admin/reports/subscriptions:
     get:
-      tags: [Admin - Reports]
+      tags:
+        - Admin - Reports
       summary: Subscriptions report
       operationId: adminSubscriptionsReport
-      x-required-permission: reports
+      x-required-permission: reports.subscriptions
       parameters:
         - $ref: '#/components/parameters/ReportDateFrom'
         - $ref: '#/components/parameters/ReportDateTo'
@@ -3347,16 +2835,17 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /admin/reports/grandma-dues:
     get:
-      tags: [Admin - Reports]
+      tags:
+        - Admin - Reports
       summary: Grandma dues report (manual settlement)
       description: |
-        Per grandma for the period (§11.12, ERD v2):
+        Per grandma for the period (spec §142, ERD v2):
         - Orders: sum of `Order.subtotal` of **delivered** orders. Fees are excluded.
         - Subscriptions: `Subscription.subtotal ÷ deliveries_count` for each delivery delivered in the period. Fees are excluded (C-02 resolved).
         - `platform_share` = value × `commission_rate` / 100; `grandma_due` = value − `platform_share`.
         Uses the current commission rate, because no history is kept (A-11). Report only, with no payouts.
       operationId: adminGrandmaDuesReport
-      x-required-permission: reports
+      x-required-permission: reports.grandma_dues
       parameters:
         - $ref: '#/components/parameters/ReportDateFrom'
         - $ref: '#/components/parameters/ReportDateTo'
@@ -3365,6 +2854,8 @@ paths:
           required: false
           schema:
             $ref: '#/components/schemas/Id'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Limit'
       responses:
         '200':
           description: Report.
@@ -3378,13 +2869,10 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '422':
           $ref: '#/components/responses/ValidationError'
-
-  # =====================================================================
-  # SUPER ADMIN
-  # =====================================================================
   /super-admin/admins:
     get:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: List admins
       operationId: superListAdmins
       x-required-role: super_admin
@@ -3407,8 +2895,11 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
     post:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: Add an admin
       operationId: superCreateAdmin
       x-required-role: super_admin
@@ -3437,7 +2928,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/AdminId'
     get:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: Get an admin with permissions
       operationId: superGetAdmin
       x-required-role: super_admin
@@ -3455,7 +2947,8 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
     patch:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: Edit or suspend / reactivate an admin
       description: Suspension sets `status = disabled`. Admins are never hard-deleted, because logs reference them (§12).
       operationId: superUpdateAdmin
@@ -3487,7 +2980,8 @@ paths:
     parameters:
       - $ref: '#/components/parameters/AdminId'
     put:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: Replace an admin's permissions
       description: The target must have `role = admin` (§12).
       operationId: superSetAdminPermissions
@@ -3515,7 +3009,8 @@ paths:
           $ref: '#/components/responses/ValidationError'
   /super-admin/permissions:
     get:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: Permission catalogue
       description: Seeded data. The full list of sections and operations is open (M-02).
       operationId: superListPermissions
@@ -3535,7 +3030,8 @@ paths:
           $ref: '#/components/responses/Forbidden'
   /super-admin/settings/system:
     get:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: Get all system settings
       operationId: superGetSystemSettings
       x-required-role: super_admin
@@ -3550,37 +3046,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-    patch:
-      tags: [Super Admin]
-      summary: Update system, payment-deadline or commission settings
-      description: |
-        Covers three Super Admin sections (§12): system settings (name, language, currency), payment settings
-        (`payment_deadline_minutes`, one value for shipping, event and subscription payments) and commission (`commission_rate`).
-        All of them live in the single `SystemSetting` row.
-      operationId: superUpdateSystemSettings
-      x-required-role: super_admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/SystemSettingsUpdate'
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/SystemSettings'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '422':
-          $ref: '#/components/responses/ValidationError'
   /super-admin/payment-methods:
     get:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: List all payment methods (incl. inactive)
       description: Seeded data. Which electronic methods exist is open (M-05).
       operationId: superListPaymentMethods
@@ -3593,47 +3062,15 @@ paths:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/PaymentMethodAdmin'
+                  $ref: '#/components/schemas/PaymentMethod'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-  /super-admin/payment-methods/{paymentMethodId}:
-    parameters:
-      - name: paymentMethodId
-        in: path
-        required: true
-        schema:
-          $ref: '#/components/schemas/Id'
-    patch:
-      tags: [Super Admin]
-      summary: Enable or disable a payment method
-      operationId: superUpdatePaymentMethod
-      x-required-role: super_admin
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/PaymentMethodToggle'
-      responses:
-        '200':
-          description: Updated.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/PaymentMethodAdmin'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '422':
-          $ref: '#/components/responses/ValidationError'
   /super-admin/activity-logs:
     get:
-      tags: [Super Admin]
+      tags:
+        - Super Admin
       summary: Admin activity log (newest first)
       description: Which operations are logged is open (M-15).
       operationId: superListActivityLogs
@@ -3675,10 +3112,38 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
-
-# =======================================================================
-# COMPONENTS
-# =======================================================================
+        '422':
+          $ref: '#/components/responses/ValidationError'
+  /orders/{orderId}/review:
+    parameters:
+      - $ref: '#/components/parameters/OrderId'
+    post:
+      tags:
+        - Reviews
+      summary: Review a delivered order
+      description: One review per delivered order (ADR-018). Rating 1-5, optional comment. Published immediately, no moderation, edit or delete route (spec §30, §37).
+      operationId: createOrderReview
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReviewInput'
+      responses:
+        '201':
+          description: Published.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Review'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+        '422':
+          $ref: '#/components/responses/ValidationError'
 components:
   securitySchemes:
     bearerAuth:
@@ -3688,7 +3153,6 @@ components:
         Short-lived JWT access token from login, registration OTP verification, or refresh. It lasts 15 minutes.
         The opaque refresh token lasts 30 days, is stored only as a hash, rotates on refresh, and is revoked on logout (ADR-008).
         Roles: `customer`, `admin`, `super_admin`. A Guest is unauthenticated (§1).
-
   parameters:
     Page:
       name: page
@@ -3698,11 +3162,12 @@ components:
         type: integer
         minimum: 1
         default: 1
+      description: 1-based page number. Values below 1 return 422. `page > total_pages` returns an empty `data` array.
     Limit:
       name: limit
       in: query
       required: false
-      description: Page size. Default 20, capped at 100 to bound response size and query cost (ADR-012).
+      description: 1-100, default 20. Values outside return 422.
       schema:
         type: integer
         minimum: 1
@@ -3770,7 +3235,6 @@ components:
       schema:
         type: string
         format: date
-
   responses:
     BadRequest:
       description: Malformed request, or an invalid or expired token in the body.
@@ -3823,7 +3287,7 @@ components:
               code: CONFLICT
               message: Phone number already registered.
     AddressLimitReached:
-      description: The customer already has five active saved addresses. Soft-deleted historical addresses do not count. The message is localized according to Accept-Language.
+      description: The customer already has five active saved addresses. Soft-deleted historical addresses do not count. The message is Arabic only.
       content:
         application/json:
           schema:
@@ -3841,7 +3305,7 @@ components:
           example:
             error:
               code: INVALID_STATE_TRANSITION
-              message: Order cannot move from "pending" to "shipped".
+              message: Order cannot move from "cancelled" to "confirmed".
     InvalidOtp:
       description: OTP invalid or expired.
       content:
@@ -3900,9 +3364,7 @@ components:
                 - field: items[1].product_id
                   code: MULTIPLE_GRANDMAS
                   message: All items must belong to one grandma.
-
   schemas:
-    # ------------------------------------------------------------- common
     Id:
       type: string
       description: Opaque identifier (int or uuid in ERD v2).
@@ -3920,7 +3382,7 @@ components:
       readOnly: true
     TimeOfDay:
       type: string
-      pattern: '^([01]\d|2[0-3]):[0-5]\d$'
+      pattern: ^([01]\d|2[0-3]):[0-5]\d$
       example: '09:00'
     PhoneNumber:
       type: string
@@ -3930,11 +3392,14 @@ components:
       example: '+963900000000'
     ErrorResponse:
       type: object
-      required: [error]
+      required:
+        - error
       properties:
         error:
           type: object
-          required: [code, message]
+          required:
+            - code
+            - message
           properties:
             code:
               type: string
@@ -3951,7 +3416,9 @@ components:
               description: Correlation ID for support and logs.
     ErrorDetail:
       type: object
-      required: [code, message]
+      required:
+        - code
+        - message
       properties:
         field:
           type: string
@@ -3962,7 +3429,11 @@ components:
           type: string
     PageMeta:
       type: object
-      required: [page, limit, total, total_pages]
+      required:
+        - page
+        - limit
+        - total
+        - total_pages
       properties:
         page:
           type: integer
@@ -3972,6 +3443,7 @@ components:
           type: integer
         total_pages:
           type: integer
+      description: Every sort appends `id` as a deterministic tie-breaker.
     OptionalReasonRequest:
       type: object
       additionalProperties: false
@@ -3982,95 +3454,162 @@ components:
     RequiredReasonRequest:
       type: object
       additionalProperties: false
-      required: [reason]
+      required:
+        - reason
       properties:
         reason:
           type: string
           minLength: 1
           maxLength: 1000
-
-    # ------------------------------------------------------------- enums
     UserRole:
       type: string
-      enum: [customer, admin, super_admin]
+      enum:
+        - customer
+        - admin
+        - super_admin
     UserStatus:
       type: string
-      enum: [active, disabled]
+      enum:
+        - active
+        - disabled
     GrandmaStatus:
       type: string
-      enum: [pending, active, unavailable]
+      enum:
+        - pending
+        - active
+        - unavailable
     CategoryStatus:
       type: string
-      enum: [active, hidden]
+      enum:
+        - active
+        - hidden
     SeasonStatus:
       type: string
-      enum: [upcoming, active, ended]
+      enum:
+        - upcoming
+        - active
+        - ended
       description: Computed from the dates (A-10).
     ProductStatus:
       type: string
-      enum: [draft, active, hidden]
+      enum:
+        - draft
+        - active
+        - hidden
     FulfillmentType:
       type: string
-      enum: [ready, made_to_order]
+      enum:
+        - ready
+        - made_to_order
     AvailabilityLabel:
       type: string
-      enum: [available, made_to_order, unavailable]
+      enum:
+        - available
+        - made_to_order
+        - unavailable
       description: Computed from stock and fulfillment type (§10.4).
     OrderType:
       type: string
-      enum: [regular, shipping, event]
+      enum:
+        - regular
+        - shipping
+        - event
     OrderStatus:
       type: string
-      enum: [pending, awaiting_payment, confirmed, preparing, ready, out_for_delivery, shipped, in_transit, delivered, rejected, cancelled]
+      enum:
+        - pending
+        - confirmed
+        - preparing
+        - ready
+        - out_for_delivery
+        - delivered
+        - cancelled
     PaymentStatus:
       type: string
-      enum: [unpaid, paid, failed, refunded]
+      enum:
+        - unpaid
+        - paid
+        - refunded
     PaymentMethodType:
       type: string
-      enum: [cash_on_delivery, electronic]
+      enum:
+        - cash_on_delivery
+        - electronic
     PaymentTransactionStatus:
       type: string
-      enum: [pending, succeeded, failed]
+      enum:
+        - pending
+        - succeeded
+        - failed
     PlanType:
       type: string
-      enum: [weekly, seasonal]
+      enum:
+        - weekly
+        - seasonal
     PlanAvailabilityStatus:
       type: string
-      enum: [active, unavailable]
+      enum:
+        - active
+        - unavailable
     SubscriptionStatus:
       type: string
-      enum: [pending_payment, active, completed, cancelled]
+      enum:
+        - pending_payment
+        - active
+        - completed
+        - cancelled
     SubscriptionDeliveryStatus:
       type: string
-      enum: [scheduled, preparing, delivered, cancelled]
+      enum:
+        - scheduled
+        - preparing
+        - delivered
+        - cancelled
     CancellationRequestStatus:
       type: string
-      enum: [pending, approved, rejected]
+      enum:
+        - pending
+        - approved
+        - rejected
     VoiceMessageStatus:
       type: string
-      enum: [active, inactive]
+      enum:
+        - active
+        - inactive
     NotificationStatus:
       type: string
-      enum: [unread, read]
+      enum:
+        - unread
+        - read
     NotificationType:
       type: string
       enum:
         - order_status_changed
-        - order_approved_payment_requested
+        - payment_requested
         - order_rejected
-        - order_cancelled_payment_timeout
         - subscription_delivery_upcoming
         - subscription_activated
         - subscription_ended
     EventType:
       type: string
-      enum: [wedding, engagement, graduation, birthday, gathering, company_event, other]
-
-    # ------------------------------------------------------------- auth
+      enum:
+        - wedding
+        - engagement
+        - graduation
+        - birthday
+        - gathering
+        - company_event
+        - other
     RegisterRequest:
       type: object
       additionalProperties: false
-      required: [first_name, last_name, phone, password, confirm_password, accept_terms]
+      required:
+        - first_name
+        - last_name
+        - phone
+        - password
+        - confirm_password
+        - accept_terms
       properties:
         first_name:
           type: string
@@ -4094,12 +3633,15 @@ components:
           description: Must equal `password`.
         accept_terms:
           type: boolean
-          enum: [true]
+          enum:
+            - true
           description: Must be accepted (§3.8). The acceptance is not stored, because the ERD has no column for it.
     LoginRequest:
       type: object
       additionalProperties: false
-      required: [phone, password]
+      required:
+        - phone
+        - password
       properties:
         phone:
           $ref: '#/components/schemas/PhoneNumber'
@@ -4109,14 +3651,17 @@ components:
     PhoneRequest:
       type: object
       additionalProperties: false
-      required: [phone]
+      required:
+        - phone
       properties:
         phone:
           $ref: '#/components/schemas/PhoneNumber'
     OtpVerifyRequest:
       type: object
       additionalProperties: false
-      required: [phone, code]
+      required:
+        - phone
+        - code
       properties:
         phone:
           $ref: '#/components/schemas/PhoneNumber'
@@ -4124,11 +3669,12 @@ components:
           type: string
           minLength: 6
           maxLength: 6
-          pattern: '^\d{6}$'
+          pattern: ^\d{6}$
           description: Six-digit numeric SMS code. It expires in 5 minutes and allows 5 attempts (ADR-008).
     OtpSentResponse:
       type: object
-      required: [phone]
+      required:
+        - phone
       properties:
         phone:
           $ref: '#/components/schemas/PhoneNumber'
@@ -4137,14 +3683,18 @@ components:
           format: date-time
     ResetTokenResponse:
       type: object
-      required: [reset_token]
+      required:
+        - reset_token
       properties:
         reset_token:
           type: string
     ResetPasswordRequest:
       type: object
       additionalProperties: false
-      required: [reset_token, password, confirm_password]
+      required:
+        - reset_token
+        - password
+        - confirm_password
       properties:
         reset_token:
           type: string
@@ -4159,7 +3709,10 @@ components:
     ChangePasswordRequest:
       type: object
       additionalProperties: false
-      required: [current_password, password, confirm_password]
+      required:
+        - current_password
+        - password
+        - confirm_password
       properties:
         current_password:
           type: string
@@ -4174,7 +3727,11 @@ components:
           format: password
     AuthResponse:
       type: object
-      required: [access_token, refresh_token, token_type, user]
+      required:
+        - access_token
+        - refresh_token
+        - token_type
+        - user
       properties:
         access_token:
           type: string
@@ -4184,13 +3741,15 @@ components:
           description: Opaque refresh token. It lasts 30 days, rotates on refresh, and is revoked on logout (ADR-008).
         token_type:
           type: string
-          enum: [Bearer]
+          enum:
+            - Bearer
         user:
           $ref: '#/components/schemas/User'
     RefreshTokenRequest:
       type: object
       additionalProperties: false
-      required: [refresh_token]
+      required:
+        - refresh_token
       properties:
         refresh_token:
           type: string
@@ -4198,7 +3757,9 @@ components:
     UpdateProfileRequest:
       type: object
       additionalProperties: false
-      required: [first_name, last_name]
+      required:
+        - first_name
+        - last_name
       properties:
         first_name:
           type: string
@@ -4208,12 +3769,18 @@ components:
           type: string
           minLength: 1
           maxLength: 100
-
-    # ------------------------------------------------------------- users & access
     User:
       type: object
       description: '`password_hash` is never exposed.'
-      required: [id, role, first_name, last_name, phone, status, created_at, updated_at]
+      required:
+        - id
+        - role
+        - first_name
+        - last_name
+        - phone
+        - status
+        - created_at
+        - updated_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4233,7 +3800,9 @@ components:
           $ref: '#/components/schemas/Timestamp'
     UserPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4245,7 +3814,8 @@ components:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
-          required: [addresses]
+          required:
+            - addresses
           properties:
             addresses:
               type: array
@@ -4253,22 +3823,47 @@ components:
                 $ref: '#/components/schemas/AdminAddress'
     Permission:
       type: object
-      required: [id, section, operation]
+      required:
+        - id
+        - key
       properties:
         id:
           $ref: '#/components/schemas/Id'
-        section:
+        key:
           type: string
-          enum: [grandmas, products, categories, orders, subscriptions, events, delivery, gifts, customers, reports]
-          description: One of the ten approved admin permission sections.
-          example: orders
-        operation:
-          type: string
-          description: Granularity open (M-02).
+          enum:
+            - dashboard.view_stats
+            - dashboard.view_attention_orders
+            - dashboard.view_upcoming_deliveries
+            - orders.view
+            - orders.accept_reject
+            - orders.update_status
+            - orders.cancel
+            - orders.manage_payment_shipping
+            - products.view
+            - products.create_edit
+            - products.manage_price_stock
+            - products.manage_availability_publish
+            - grandmas.view
+            - grandmas.create_edit
+            - grandmas.change_status
+            - grandmas.set_of_month
+            - subscriptions.view
+            - subscriptions.manage_plans
+            - subscriptions.view_deliveries
+            - subscriptions.update_delivery_status
+            - customers.view
+            - customers.view_addresses
+            - customers.view_orders_subscriptions
+            - reports.orders_sales
+            - reports.subscriptions
+            - reports.grandma_dues
+          description: One of the 26 function keys (spec §12, ADR-019).
     PermissionAssignment:
       type: object
       additionalProperties: false
-      required: [permission_ids]
+      required:
+        - permission_ids
       properties:
         permission_ids:
           type: array
@@ -4279,7 +3874,8 @@ components:
       allOf:
         - $ref: '#/components/schemas/User'
         - type: object
-          required: [permissions]
+          required:
+            - permissions
           properties:
             permissions:
               type: array
@@ -4288,7 +3884,9 @@ components:
                 $ref: '#/components/schemas/Permission'
     AdminUserPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4299,7 +3897,11 @@ components:
     AdminCreateInput:
       type: object
       additionalProperties: false
-      required: [first_name, last_name, phone, password]
+      required:
+        - first_name
+        - last_name
+        - phone
+        - password
       properties:
         first_name:
           type: string
@@ -4345,7 +3947,11 @@ components:
           $ref: '#/components/schemas/UserStatus'
     ActivityLog:
       type: object
-      required: [id, user_id, action, occurred_at]
+      required:
+        - id
+        - user_id
+        - action
+        - occurred_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4365,7 +3971,9 @@ components:
           format: date-time
     ActivityLogPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4373,11 +3981,17 @@ components:
             $ref: '#/components/schemas/ActivityLog'
         meta:
           $ref: '#/components/schemas/PageMeta'
-
-    # ------------------------------------------------------------- addresses & notifications
     Address:
       type: object
-      required: [id, delivery_zone_id, city, street, phone, is_default, created_at, updated_at]
+      required:
+        - id
+        - delivery_zone_id
+        - city
+        - street
+        - phone
+        - is_default
+        - created_at
+        - updated_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4412,11 +4026,15 @@ components:
         - type: object
           properties:
             delivery_zone:
-              $ref: '#/components/schemas/DeliveryZoneAdmin'
+              $ref: '#/components/schemas/DeliveryZone'
     AddressInput:
       type: object
       additionalProperties: false
-      required: [delivery_zone_id, city, street, phone]
+      required:
+        - delivery_zone_id
+        - city
+        - street
+        - phone
       properties:
         delivery_zone_id:
           $ref: '#/components/schemas/Id'
@@ -4438,7 +4056,12 @@ components:
           default: false
     Notification:
       type: object
-      required: [id, type, message, status, created_at]
+      required:
+        - id
+        - type
+        - message
+        - status
+        - created_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4460,7 +4083,9 @@ components:
           $ref: '#/components/schemas/Timestamp'
     NotificationPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4471,16 +4096,19 @@ components:
     NotificationStatusUpdate:
       type: object
       additionalProperties: false
-      required: [status]
+      required:
+        - status
       properties:
         status:
           type: string
-          enum: [read]
-
-    # ------------------------------------------------------------- catalog
+          enum:
+            - read
     Category:
       type: object
-      required: [id, name, status]
+      required:
+        - id
+        - name
+        - status
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4497,30 +4125,29 @@ components:
       allOf:
         - $ref: '#/components/schemas/Category'
         - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
+          required: []
+          properties: {}
     CategoryInput:
       type: object
       additionalProperties: false
-      required: [name, status]
+      required:
+        - name
+        - status
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 100
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 100
-          nullable: true
         status:
           $ref: '#/components/schemas/CategoryStatus'
     Season:
       type: object
-      required: [id, name, start_date, end_date, status]
+      required:
+        - id
+        - name
+        - start_date
+        - end_date
+        - status
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4544,25 +4171,20 @@ components:
       allOf:
         - $ref: '#/components/schemas/Season'
         - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
+          required: []
+          properties: {}
     SeasonInput:
       type: object
       additionalProperties: false
-      required: [name, start_date, end_date]
+      required:
+        - name
+        - start_date
+        - end_date
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 100
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 100
-          nullable: true
         start_date:
           type: string
           format: date
@@ -4571,7 +4193,9 @@ components:
           format: date
     GrandmaRef:
       type: object
-      required: [id, name]
+      required:
+        - id
+        - name
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4581,14 +4205,15 @@ components:
       allOf:
         - $ref: '#/components/schemas/GrandmaRef'
         - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
+          required: []
+          properties: {}
     Grandma:
       type: object
-      required: [id, name, status, is_grandma_of_month]
+      required:
+        - id
+        - name
+        - status
+        - is_grandma_of_month
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4616,7 +4241,9 @@ components:
           description: Computed from her products' reviews (§3.3). Not stored.
     GrandmaPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4628,7 +4255,9 @@ components:
       allOf:
         - $ref: '#/components/schemas/Grandma'
         - type: object
-          required: [recipes, voice_messages]
+          required:
+            - recipes
+            - voice_messages
           properties:
             recipes:
               type: array
@@ -4643,7 +4272,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Grandma'
         - type: object
-          required: [name_en, story_en, bio_en]
+          required: []
           properties:
             admin_phone:
               allOf:
@@ -4661,22 +4290,15 @@ components:
             products_count:
               type: integer
               readOnly: true
-            name_en:
-              type: string
-              nullable: true
-            story_en:
-              type: string
-              nullable: true
-            bio_en:
-              type: string
-              nullable: true
             created_at:
               $ref: '#/components/schemas/Timestamp'
             updated_at:
               $ref: '#/components/schemas/Timestamp'
     GrandmaAdminPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4687,30 +4309,21 @@ components:
     GrandmaInput:
       type: object
       additionalProperties: false
-      required: [name, status]
+      required:
+        - name
+        - status
       properties:
         name:
           type: string
           minLength: 1
           maxLength: 100
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 100
-          nullable: true
         image_url:
           type: string
           format: uri
         story:
           type: string
-        story_en:
-          type: string
-          nullable: true
         bio:
           type: string
-        bio_en:
-          type: string
-          nullable: true
         admin_phone:
           $ref: '#/components/schemas/PhoneNumber'
         order_hours_from:
@@ -4721,7 +4334,10 @@ components:
           $ref: '#/components/schemas/GrandmaStatus'
     Recipe:
       type: object
-      required: [id, grandma_id, title]
+      required:
+        - id
+        - grandma_id
+        - title
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4740,36 +4356,28 @@ components:
       allOf:
         - $ref: '#/components/schemas/Recipe'
         - type: object
-          required: [title_en, content_en]
-          properties:
-            title_en:
-              type: string
-              nullable: true
-            content_en:
-              type: string
-              nullable: true
+          required: []
+          properties: {}
     RecipeInput:
       type: object
       additionalProperties: false
-      required: [title]
+      required:
+        - title
       properties:
         title:
           type: string
           minLength: 1
           maxLength: 200
-        title_en:
-          type: string
-          minLength: 1
-          maxLength: 200
-          nullable: true
         content:
           type: string
-        content_en:
-          type: string
-          nullable: true
     VoiceMessage:
       type: object
-      required: [id, uuid, grandma_id, audio_url, status, title_en]
+      required:
+        - id
+        - uuid
+        - grandma_id
+        - audio_url
+        - status
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4786,9 +4394,6 @@ components:
         title:
           type: string
           nullable: true
-        title_en:
-          type: string
-          nullable: true
         status:
           $ref: '#/components/schemas/VoiceMessageStatus'
         created_at:
@@ -4798,7 +4403,10 @@ components:
     VoiceMessagePublic:
       type: object
       description: Public view, with no internal ID and no order data.
-      required: [uuid, audio_url, grandma]
+      required:
+        - uuid
+        - audio_url
+        - grandma
       properties:
         uuid:
           type: string
@@ -4814,7 +4422,9 @@ components:
     VoiceMessageInput:
       type: object
       additionalProperties: false
-      required: [audio_url, status]
+      required:
+        - audio_url
+        - status
       properties:
         audio_url:
           type: string
@@ -4823,15 +4433,13 @@ components:
           type: string
           maxLength: 200
           nullable: true
-        title_en:
-          type: string
-          maxLength: 200
-          nullable: true
         status:
           $ref: '#/components/schemas/VoiceMessageStatus'
     ProductImage:
       type: object
-      required: [id, image_url]
+      required:
+        - id
+        - image_url
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4841,7 +4449,8 @@ components:
     ProductImageInput:
       type: object
       additionalProperties: false
-      required: [image_url]
+      required:
+        - image_url
       properties:
         image_url:
           type: string
@@ -4849,7 +4458,10 @@ components:
     ProductChannels:
       type: object
       additionalProperties: false
-      required: [regular, shipping, event]
+      required:
+        - regular
+        - shipping
+        - event
       description: Maps to `channel_regular`, `channel_shipping` and `channel_event`. `shipping` also means eligible for shipping (A-04).
       properties:
         regular:
@@ -4860,7 +4472,20 @@ components:
           type: boolean
     Product:
       type: object
-      required: [id, grandma, category, name, price, sale_unit, status, fulfillment_type, allow_scheduling, channels, availability, is_box, images]
+      required:
+        - id
+        - grandma
+        - category
+        - name
+        - price
+        - sale_unit
+        - status
+        - fulfillment_type
+        - allow_scheduling
+        - channels
+        - availability
+        - is_box
+        - images
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -4912,7 +4537,7 @@ components:
           format: double
           nullable: true
           readOnly: true
-          description: Computed from `Review`, for the product card and the rating sort (§3.2). Not stored.
+          description: Derived from delivered orders that contain this product (ADR-018). Not stored.
         images:
           type: array
           items:
@@ -4932,7 +4557,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/Product'
         - type: object
-          required: [name_en, description_en, sale_unit_en, storage_method_en]
+          required: []
           properties:
             grandma:
               $ref: '#/components/schemas/GrandmaAdminRef'
@@ -4942,25 +4567,15 @@ components:
               allOf:
                 - $ref: '#/components/schemas/SeasonAdmin'
               nullable: true
-            name_en:
-              type: string
-              nullable: true
-            description_en:
-              type: string
-              nullable: true
-            sale_unit_en:
-              type: string
-              nullable: true
-            storage_method_en:
-              type: string
-              nullable: true
             box:
               allOf:
                 - $ref: '#/components/schemas/AdminBox'
               nullable: true
     ProductPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4970,7 +4585,9 @@ components:
           $ref: '#/components/schemas/PageMeta'
     AdminProductPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -4981,7 +4598,16 @@ components:
     ProductInput:
       type: object
       additionalProperties: false
-      required: [grandma_id, category_id, name, price, sale_unit, status, fulfillment_type, allow_scheduling, channels]
+      required:
+        - grandma_id
+        - category_id
+        - name
+        - price
+        - sale_unit
+        - status
+        - fulfillment_type
+        - allow_scheduling
+        - channels
       properties:
         grandma_id:
           $ref: '#/components/schemas/Id'
@@ -4995,15 +4621,7 @@ components:
           type: string
           minLength: 1
           maxLength: 200
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 200
-          nullable: true
         description:
-          type: string
-          nullable: true
-        description_en:
           type: string
           nullable: true
         price:
@@ -5012,16 +4630,7 @@ components:
           type: string
           minLength: 1
           maxLength: 50
-        sale_unit_en:
-          type: string
-          minLength: 1
-          maxLength: 50
-          nullable: true
         storage_method:
-          type: string
-          maxLength: 500
-          nullable: true
-        storage_method_en:
           type: string
           maxLength: 500
           nullable: true
@@ -5048,7 +4657,8 @@ components:
           nullable: true
     Box:
       type: object
-      required: [items]
+      required:
+        - items
       description: Product subtype. Its stock is `Product.stock`, independent of its contents (§3.5).
       properties:
         voice_message_id:
@@ -5067,7 +4677,9 @@ components:
             $ref: '#/components/schemas/BoxItem'
     BoxItem:
       type: object
-      required: [id, quantity]
+      required:
+        - id
+        - quantity
       description: A product reference and/or a free-text name (A-03).
       properties:
         id:
@@ -5088,11 +4700,8 @@ components:
       allOf:
         - $ref: '#/components/schemas/BoxItem'
         - type: object
-          required: [item_name_en]
-          properties:
-            item_name_en:
-              type: string
-              nullable: true
+          required: []
+          properties: {}
     AdminBox:
       allOf:
         - $ref: '#/components/schemas/Box'
@@ -5106,7 +4715,8 @@ components:
     BoxInput:
       type: object
       additionalProperties: false
-      required: [items]
+      required:
+        - items
       properties:
         voice_message_id:
           allOf:
@@ -5120,7 +4730,8 @@ components:
     BoxItemInput:
       type: object
       additionalProperties: false
-      required: [quantity]
+      required:
+        - quantity
       description: At least one of `product_id` and `item_name` is required.
       properties:
         product_id:
@@ -5128,59 +4739,34 @@ components:
         item_name:
           type: string
           maxLength: 200
-        item_name_en:
-          type: string
-          maxLength: 200
-          nullable: true
         quantity:
           type: number
           format: double
           minimum: 0
           exclusiveMinimum: true
-
-    # ------------------------------------------------------------- delivery / shipping / payment config
     DeliveryZone:
       type: object
-      required: [id, name, fee, is_active]
+      required:
+        - id
+        - name
+        - fee
+        - is_active
       properties:
         id:
           $ref: '#/components/schemas/Id'
         name:
           type: string
-        fee:
-          $ref: '#/components/schemas/Money'
-        is_active:
-          type: boolean
-    DeliveryZoneAdmin:
-      allOf:
-        - $ref: '#/components/schemas/DeliveryZone'
-        - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
-    DeliveryZoneInput:
-      type: object
-      additionalProperties: false
-      required: [name, fee, is_active]
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 100
-          nullable: true
         fee:
           $ref: '#/components/schemas/Money'
         is_active:
           type: boolean
     ShippingCountry:
       type: object
-      required: [id, name, fee, is_active]
+      required:
+        - id
+        - name
+        - fee
+        - is_active
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -5190,67 +4776,12 @@ components:
           $ref: '#/components/schemas/Money'
         is_active:
           type: boolean
-    ShippingCountryAdmin:
-      allOf:
-        - $ref: '#/components/schemas/ShippingCountry'
-        - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
-    ShippingCountryInput:
-      type: object
-      additionalProperties: false
-      required: [name, fee, is_active]
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 100
-          nullable: true
-        fee:
-          $ref: '#/components/schemas/Money'
-        is_active:
-          type: boolean
-    ShippingCompany:
-      type: object
-      required: [id, name]
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        name:
-          type: string
-    ShippingCompanyAdmin:
-      allOf:
-        - $ref: '#/components/schemas/ShippingCompany'
-        - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
-    ShippingCompanyInput:
-      type: object
-      additionalProperties: false
-      required: [name]
-      properties:
-        name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 100
-          nullable: true
     DeliveryPeriod:
       type: object
-      required: [id, start_time, end_time]
+      required:
+        - id
+        - start_time
+        - end_time
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -5261,115 +4792,11 @@ components:
           $ref: '#/components/schemas/TimeOfDay'
         end_time:
           $ref: '#/components/schemas/TimeOfDay'
-    DeliveryPeriodAdmin:
-      allOf:
-        - $ref: '#/components/schemas/DeliveryPeriod'
-        - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
-    DeliveryPeriodInput:
-      type: object
-      additionalProperties: false
-      required: [start_time, end_time]
-      description: '`end_time` must be after `start_time`.'
-      properties:
-        name:
-          type: string
-          maxLength: 100
-        name_en:
-          type: string
-          maxLength: 100
-          nullable: true
-        start_time:
-          $ref: '#/components/schemas/TimeOfDay'
-        end_time:
-          $ref: '#/components/schemas/TimeOfDay'
-    DeliverySlot:
-      type: object
-      required: [id, weekday, delivery_period_id]
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        weekday:
-          type: integer
-          minimum: 0
-          maximum: 6
-          description: 0–6. Which day is 0 is not specified.
-        delivery_period_id:
-          $ref: '#/components/schemas/Id'
-    DeliverySlotInput:
-      type: object
-      additionalProperties: false
-      required: [weekday, delivery_period_id]
-      properties:
-        weekday:
-          type: integer
-          minimum: 0
-          maximum: 6
-        delivery_period_id:
-          $ref: '#/components/schemas/Id'
-    Holiday:
-      type: object
-      required: [id, holiday_date]
-      properties:
-        id:
-          $ref: '#/components/schemas/Id'
-        holiday_date:
-          type: string
-          format: date
-        name:
-          type: string
-          nullable: true
-    HolidayAdmin:
-      allOf:
-        - $ref: '#/components/schemas/Holiday'
-        - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
-    HolidayInput:
-      type: object
-      additionalProperties: false
-      required: [holiday_date]
-      properties:
-        holiday_date:
-          type: string
-          format: date
-        name:
-          type: string
-          maxLength: 100
-          nullable: true
-        name_en:
-          type: string
-          maxLength: 100
-          nullable: true
-    DeliverySettings:
-      type: object
-      required: [min_preparation_hours]
-      properties:
-        min_preparation_hours:
-          type: integer
-          minimum: 0
-          description: Minimum preparation before the nearest delivery slot (§9.1).
-          example: 4
-        updated_at:
-          $ref: '#/components/schemas/Timestamp'
-    DeliverySettingsInput:
-      type: object
-      additionalProperties: false
-      required: [min_preparation_hours]
-      properties:
-        min_preparation_hours:
-          type: integer
-          minimum: 0
     DeliveryAvailability:
       type: object
-      required: [min_date, dates]
+      required:
+        - min_date
+        - dates
       properties:
         min_date:
           type: string
@@ -5377,7 +4804,9 @@ components:
         earliest:
           type: object
           nullable: true
-          required: [date, delivery_period]
+          required:
+            - date
+            - delivery_period
           properties:
             date:
               type: string
@@ -5388,7 +4817,9 @@ components:
           type: array
           items:
             type: object
-            required: [date, periods]
+            required:
+              - date
+              - periods
             properties:
               date:
                 type: string
@@ -5399,7 +4830,11 @@ components:
                   $ref: '#/components/schemas/DeliveryPeriod'
     PaymentMethod:
       type: object
-      required: [id, name, type, is_active]
+      required:
+        - id
+        - name
+        - type
+        - is_active
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -5409,94 +4844,48 @@ components:
           $ref: '#/components/schemas/PaymentMethodType'
         is_active:
           type: boolean
-    PaymentMethodAdmin:
-      allOf:
-        - $ref: '#/components/schemas/PaymentMethod'
-        - type: object
-          required: [name_en]
-          properties:
-            name_en:
-              type: string
-              nullable: true
-    PaymentMethodToggle:
-      type: object
-      additionalProperties: false
-      required: [is_active]
-      properties:
-        is_active:
-          type: boolean
     PublicSettings:
       type: object
-      required: [platform_name, language, currency]
+      required:
+        - platform_name
+        - currency
       properties:
         platform_name:
           type: string
-        language:
-          type: string
-          example: ar
         currency:
           type: string
     SystemSettings:
       allOf:
         - $ref: '#/components/schemas/PublicSettings'
         - type: object
-          required: [payment_deadline_minutes, commission_rate, platform_name_en]
+          required:
+            - payment_deadline_minutes
+            - commission_rate
           properties:
             payment_deadline_minutes:
               type: integer
               minimum: 1
-              description: Payment deadline for shipping, event and subscription payments (§5, §12).
+              description: Payment deadline for subscriptions only (§5, §6).
               example: 1440
             commission_rate:
               type: number
               format: double
               minimum: 0
               maximum: 100
-              description: Platform percentage (§11.12).
+              description: Platform percentage (spec §142).
               example: 15
-            platform_name_en:
-              type: string
-              nullable: true
             updated_at:
               $ref: '#/components/schemas/Timestamp'
-    SystemSettingsUpdate:
-      type: object
-      additionalProperties: false
-      minProperties: 1
-      properties:
-        platform_name:
-          type: string
-          minLength: 1
-          maxLength: 100
-        platform_name_en:
-          type: string
-          minLength: 1
-          maxLength: 100
-          nullable: true
-        language:
-          type: string
-          enum: [ar, en]
-          minLength: 2
-          maxLength: 2
-        currency:
-          type: string
-          enum: [SYP]
-          minLength: 3
-          maxLength: 3
-        payment_deadline_minutes:
-          type: integer
-          minimum: 1
-        commission_rate:
-          type: number
-          format: double
-          minimum: 0
-          maximum: 100
-
-    # ------------------------------------------------------------- payments
     PaymentTransaction:
       type: object
       description: Exactly one of `order_id` and `subscription_id` is set; never both, never neither (ADR-005).
-      required: [id, payment_method_id, amount, status, created_at, updated_at]
+      required:
+        - id
+        - payment_method_id
+        - amount
+        - status
+        - created_at
+        - updated_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -5530,7 +4919,8 @@ components:
     CreatePaymentRequest:
       type: object
       additionalProperties: false
-      required: [payment_method_id]
+      required:
+        - payment_method_id
       description: Provide **exactly one** of `order_id` or `subscription_id` (ADR-005).
       properties:
         payment_method_id:
@@ -5542,11 +4932,14 @@ components:
         subscription_id:
           $ref: '#/components/schemas/Id'
       oneOf:
-        - required: [order_id]
-        - required: [subscription_id]
+        - required:
+            - order_id
+        - required:
+            - subscription_id
     PaymentInitiation:
       type: object
-      required: [transaction]
+      required:
+        - transaction
       properties:
         transaction:
           $ref: '#/components/schemas/PaymentTransaction'
@@ -5559,21 +4952,29 @@ components:
             (redirect URL, client token). The shape is TBD (M-05).
     PaymentWebhookEvent:
       type: object
-      required: [gateway_reference, status]
+      required:
+        - gateway_reference
+        - status
       description: Normalized shape. The real payload and signature depend on the provider (M-05).
       properties:
         gateway_reference:
           type: string
         status:
           type: string
-          enum: [succeeded, failed]
+          enum:
+            - succeeded
+            - failed
         amount:
           $ref: '#/components/schemas/Money'
         failure_reason:
           type: string
     Refund:
       type: object
-      required: [id, amount, recorded_by, recorded_at]
+      required:
+        - id
+        - amount
+        - recorded_by
+        - recorded_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -5597,7 +4998,9 @@ components:
     RefundInput:
       type: object
       additionalProperties: false
-      required: [amount, reason]
+      required:
+        - amount
+        - reason
       properties:
         amount:
           type: number
@@ -5609,12 +5012,12 @@ components:
           type: string
           minLength: 1
           maxLength: 1000
-
-    # ------------------------------------------------------------- orders
     OrderItemInput:
       type: object
       additionalProperties: false
-      required: [product_id, quantity]
+      required:
+        - product_id
+        - quantity
       properties:
         product_id:
           $ref: '#/components/schemas/Id'
@@ -5627,7 +5030,9 @@ components:
     GiftDetailInput:
       type: object
       additionalProperties: false
-      required: [wrapping_type, hide_sender]
+      required:
+        - wrapping_type
+        - hide_sender
       description: |
         `regular` gift: recipient name, phone, zone and address are **required**, and the fee uses the recipient zone.
         `shipping` gift: these must be omitted, because the shipping recipient applies (§7).
@@ -5658,7 +5063,12 @@ components:
     ShippingDetailInput:
       type: object
       additionalProperties: false
-      required: [shipping_country_id, recipient_city, recipient_name, recipient_phone, recipient_address]
+      required:
+        - shipping_country_id
+        - recipient_city
+        - recipient_name
+        - recipient_phone
+        - recipient_address
       properties:
         shipping_country_id:
           $ref: '#/components/schemas/Id'
@@ -5685,7 +5095,14 @@ components:
     EventDetailInput:
       type: object
       additionalProperties: false
-      required: [event_type, event_date, event_time, guests_count, delivery_zone_id, event_address, contact_phone]
+      required:
+        - event_type
+        - event_date
+        - event_time
+        - guests_count
+        - delivery_zone_id
+        - event_address
+        - contact_phone
       properties:
         event_type:
           $ref: '#/components/schemas/EventType'
@@ -5711,7 +5128,9 @@ components:
           maxLength: 1000
     CheckoutRequest:
       type: object
-      required: [order_type, items]
+      required:
+        - order_type
+        - items
       description: |
         Cart contents sent at checkout. Conditional rules, validated with `422`:
         - `regular`: `address_id` is required unless `is_gift`. `payment_method_id` is required on order creation.
@@ -5755,15 +5174,21 @@ components:
             payment_method_id:
               allOf:
                 - $ref: '#/components/schemas/Id'
-              description: Regular orders only (cash or electronic). An electronic method creates the order `awaiting_payment`.
+              description: Required for every order type. Regular orders may be cash or electronic; shipping and event orders must be electronic and `paid` before confirmation.
             expected_total_amount:
               allOf:
                 - $ref: '#/components/schemas/Money'
               description: The total the customer accepted. A mismatch returns `409 PRICE_CHANGED` (§5).
-          required: [expected_total_amount]
+          required:
+            - expected_total_amount
     OrderPreviewItem:
       type: object
-      required: [product_id, name, quantity, unit_price, line_total]
+      required:
+        - product_id
+        - name
+        - quantity
+        - unit_price
+        - line_total
       properties:
         product_id:
           $ref: '#/components/schemas/Id'
@@ -5778,7 +5203,15 @@ components:
           $ref: '#/components/schemas/Money'
     OrderPreview:
       type: object
-      required: [order_type, grandma, is_scheduled, scheduling_required, items, subtotal, fee_amount, total_amount]
+      required:
+        - order_type
+        - grandma
+        - is_scheduled
+        - scheduling_required
+        - items
+        - subtotal
+        - fee_amount
+        - total_amount
       properties:
         order_type:
           $ref: '#/components/schemas/OrderType'
@@ -5822,7 +5255,12 @@ components:
               description: Present when `error.code = PRICE_CHANGED`.
     OrderItem:
       type: object
-      required: [id, product_id, product_name, quantity, unit_price]
+      required:
+        - id
+        - product_id
+        - product_name
+        - quantity
+        - unit_price
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -5837,13 +5275,14 @@ components:
           allOf:
             - $ref: '#/components/schemas/Money'
           description: Price snapshot at order time.
-        review:
-          allOf:
-            - $ref: '#/components/schemas/Review'
-          nullable: true
     OrderShippingDetail:
       type: object
-      required: [shipping_country, recipient_city, recipient_name, recipient_phone, recipient_address]
+      required:
+        - shipping_country
+        - recipient_city
+        - recipient_name
+        - recipient_phone
+        - recipient_address
       properties:
         shipping_country:
           $ref: '#/components/schemas/ShippingCountry'
@@ -5862,38 +5301,48 @@ components:
         shipping_notes:
           type: string
           nullable: true
-        shipping_company:
-          allOf:
-            - $ref: '#/components/schemas/ShippingCompany'
-          nullable: true
         tracking_number:
           type: string
           nullable: true
+        shipping_company_name:
+          type: string
+          nullable: true
+          description: Free text entered by an admin (spec §9.2).
     AdminOrderShippingDetail:
       allOf:
         - $ref: '#/components/schemas/OrderShippingDetail'
         - type: object
           properties:
             shipping_country:
-              $ref: '#/components/schemas/ShippingCountryAdmin'
-            shipping_company:
-              allOf:
-                - $ref: '#/components/schemas/ShippingCompanyAdmin'
+              $ref: '#/components/schemas/ShippingCountry'
+            shipping_company_name:
+              type: string
               nullable: true
+              description: Free text entered by an admin (spec §9.2).
     ShipmentInput:
       type: object
       additionalProperties: false
-      required: [shipping_company_id, tracking_number]
+      required:
+        - tracking_number
       properties:
-        shipping_company_id:
-          $ref: '#/components/schemas/Id'
         tracking_number:
           type: string
           minLength: 1
           maxLength: 100
+        shipping_company_name:
+          type: string
+          nullable: true
+          maxLength: 100
     OrderEventDetail:
       type: object
-      required: [event_type, event_date, event_time, guests_count, delivery_zone, event_address, contact_phone]
+      required:
+        - event_type
+        - event_date
+        - event_time
+        - guests_count
+        - delivery_zone
+        - event_address
+        - contact_phone
       properties:
         event_type:
           $ref: '#/components/schemas/EventType'
@@ -5919,10 +5368,12 @@ components:
         - type: object
           properties:
             delivery_zone:
-              $ref: '#/components/schemas/DeliveryZoneAdmin'
+              $ref: '#/components/schemas/DeliveryZone'
     OrderGiftDetail:
       type: object
-      required: [wrapping_type, hide_sender]
+      required:
+        - wrapping_type
+        - hide_sender
       properties:
         recipient_name:
           type: string
@@ -5955,11 +5406,14 @@ components:
           properties:
             recipient_delivery_zone:
               allOf:
-                - $ref: '#/components/schemas/DeliveryZoneAdmin'
+                - $ref: '#/components/schemas/DeliveryZone'
               nullable: true
     OrderStatusHistory:
       type: object
-      required: [id, status, changed_at]
+      required:
+        - id
+        - status
+        - changed_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -5978,11 +5432,16 @@ components:
     OrderStatusUpdateRequest:
       type: object
       additionalProperties: false
-      required: [status]
+      required:
+        - status
       properties:
         status:
           type: string
-          enum: [preparing, ready, out_for_delivery, shipped, in_transit, delivered]
+          enum:
+            - preparing
+            - ready
+            - out_for_delivery
+            - delivered
         note:
           type: string
           maxLength: 1000
@@ -5998,11 +5457,22 @@ components:
           maxLength: 500
         payment_status:
           type: string
-          enum: [paid]
+          enum:
+            - paid
           description: Marks a cash-on-delivery order as paid. No other value is accepted.
     OrderSummary:
       type: object
-      required: [id, order_type, is_scheduled, is_gift, status, payment_status, total_amount, grandma, created_at, updated_at]
+      required:
+        - id
+        - order_type
+        - is_scheduled
+        - is_gift
+        - status
+        - payment_status
+        - total_amount
+        - grandma
+        - created_at
+        - updated_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -6029,17 +5499,15 @@ components:
           format: date
           nullable: true
           description: Meaning varies by type (A-05).
-        payment_deadline:
-          type: string
-          format: date-time
-          nullable: true
         created_at:
           $ref: '#/components/schemas/Timestamp'
         updated_at:
           $ref: '#/components/schemas/Timestamp'
     OrderSummaryPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6051,13 +5519,16 @@ components:
       allOf:
         - $ref: '#/components/schemas/OrderSummary'
         - type: object
-          required: [grandma]
+          required:
+            - grandma
           properties:
             grandma:
               $ref: '#/components/schemas/GrandmaAdminRef'
     AdminOrderSummaryPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6069,7 +5540,14 @@ components:
       allOf:
         - $ref: '#/components/schemas/OrderSummary'
         - type: object
-          required: [items, subtotal, fee_amount, can_cancel, timeline, refunds, payment_transactions]
+          required:
+            - items
+            - subtotal
+            - fee_amount
+            - can_cancel
+            - timeline
+            - refunds
+            - payment_transactions
           properties:
             items:
               type: array
@@ -6145,7 +5623,7 @@ components:
             grandma_contact:
               type: object
               nullable: true
-              description: Admin only (§11.2).
+              description: Admin only (spec §11.2).
               properties:
                 admin_phone:
                   allOf:
@@ -6159,17 +5637,22 @@ components:
                   allOf:
                     - $ref: '#/components/schemas/TimeOfDay'
                   nullable: true
+            review:
+              allOf:
+                - $ref: '#/components/schemas/Review'
+              nullable: true
     AdminOrder:
       allOf:
         - $ref: '#/components/schemas/Order'
         - type: object
-          required: [grandma]
+          required:
+            - grandma
           properties:
             grandma:
               $ref: '#/components/schemas/GrandmaAdminRef'
             payment_method:
               allOf:
-                - $ref: '#/components/schemas/PaymentMethodAdmin'
+                - $ref: '#/components/schemas/PaymentMethod'
               nullable: true
             address:
               allOf:
@@ -6178,7 +5661,7 @@ components:
               description: The address used. It may be soft-deleted (has `deleted_at`). It is kept for history (ERD v2).
             delivery_period:
               allOf:
-                - $ref: '#/components/schemas/DeliveryPeriodAdmin'
+                - $ref: '#/components/schemas/DeliveryPeriod'
               nullable: true
             shipping:
               allOf:
@@ -6194,22 +5677,28 @@ components:
               nullable: true
     Review:
       type: object
-      required: [id, order_item_id, product_id, rating, created_at]
+      required:
+        - id
+        - order_id
+        - rating
+        - published_at
+        - created_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
-        order_item_id:
-          $ref: '#/components/schemas/Id'
-        product_id:
+        order_id:
           $ref: '#/components/schemas/Id'
         rating:
           type: integer
           minimum: 1
           maximum: 5
-          description: Stars (1–5).
+          description: Stars (1-5).
         comment:
           type: string
           nullable: true
+          maxLength: 2000
+        published_at:
+          $ref: '#/components/schemas/Timestamp'
         created_at:
           $ref: '#/components/schemas/Timestamp'
         updated_at:
@@ -6217,7 +5706,8 @@ components:
     ReviewInput:
       type: object
       additionalProperties: false
-      required: [rating]
+      required:
+        - rating
       properties:
         rating:
           type: integer
@@ -6226,11 +5716,17 @@ components:
         comment:
           type: string
           maxLength: 2000
-
-    # ------------------------------------------------------------- subscriptions
     SubscriptionPlan:
       type: object
-      required: [id, grandma, plan_type, name, price, duration_days, deliveries_count, availability_status]
+      required:
+        - id
+        - grandma
+        - plan_type
+        - name
+        - price
+        - duration_days
+        - deliveries_count
+        - availability_status
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -6273,7 +5769,7 @@ components:
       allOf:
         - $ref: '#/components/schemas/SubscriptionPlan'
         - type: object
-          required: [name_en]
+          required: []
           properties:
             grandma:
               $ref: '#/components/schemas/GrandmaAdminRef'
@@ -6281,12 +5777,11 @@ components:
               allOf:
                 - $ref: '#/components/schemas/AdminProduct'
               nullable: true
-            name_en:
-              type: string
-              nullable: true
     SubscriptionPlanPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6296,7 +5791,9 @@ components:
           $ref: '#/components/schemas/PageMeta'
     AdminSubscriptionPlanPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6307,7 +5804,14 @@ components:
     SubscriptionPlanInput:
       type: object
       additionalProperties: false
-      required: [grandma_id, plan_type, name, price, duration_days, deliveries_count, availability_status]
+      required:
+        - grandma_id
+        - plan_type
+        - name
+        - price
+        - duration_days
+        - deliveries_count
+        - availability_status
       properties:
         grandma_id:
           $ref: '#/components/schemas/Id'
@@ -6326,11 +5830,6 @@ components:
           type: string
           minLength: 1
           maxLength: 200
-        name_en:
-          type: string
-          minLength: 1
-          maxLength: 200
-          nullable: true
         image_url:
           type: string
           format: uri
@@ -6347,7 +5846,10 @@ components:
     CreateSubscriptionRequest:
       type: object
       additionalProperties: false
-      required: [plan_id, start_date, address_id]
+      required:
+        - plan_id
+        - start_date
+        - address_id
       properties:
         plan_id:
           $ref: '#/components/schemas/Id'
@@ -6363,7 +5865,11 @@ components:
           description: Optional preferred electronic method. The payment itself uses `POST /payments`.
     SubscriptionDelivery:
       type: object
-      required: [id, subscription_id, delivery_date, status]
+      required:
+        - id
+        - subscription_id
+        - delivery_date
+        - status
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -6378,7 +5884,9 @@ components:
           $ref: '#/components/schemas/Timestamp'
     SubscriptionDeliveryPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6389,14 +5897,22 @@ components:
     SubscriptionDeliveryStatusUpdate:
       type: object
       additionalProperties: false
-      required: [status]
+      required:
+        - status
       properties:
         status:
           type: string
-          enum: [preparing, delivered, cancelled]
+          enum:
+            - preparing
+            - delivered
+            - cancelled
     SubscriptionCancellationRequest:
       type: object
-      required: [id, subscription_id, requested_at, status]
+      required:
+        - id
+        - subscription_id
+        - requested_at
+        - status
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -6419,7 +5935,9 @@ components:
           nullable: true
     CancellationRequestPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6429,7 +5947,18 @@ components:
           $ref: '#/components/schemas/PageMeta'
     Subscription:
       type: object
-      required: [id, plan, customer_id, address, status, start_date, subtotal, fee_amount, total_price, created_at, updated_at]
+      required:
+        - id
+        - plan
+        - customer_id
+        - address
+        - status
+        - start_date
+        - subtotal
+        - fee_amount
+        - total_price
+        - created_at
+        - updated_at
       properties:
         id:
           $ref: '#/components/schemas/Id'
@@ -6513,11 +6042,13 @@ components:
               description: The address used. It may be soft-deleted. It is kept for history.
             payment_method:
               allOf:
-                - $ref: '#/components/schemas/PaymentMethodAdmin'
+                - $ref: '#/components/schemas/PaymentMethod'
               nullable: true
     SubscriptionPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6525,10 +6056,11 @@ components:
             $ref: '#/components/schemas/Subscription'
         meta:
           $ref: '#/components/schemas/PageMeta'
-
     AdminSubscriptionPage:
       type: object
-      required: [data, meta]
+      required:
+        - data
+        - meta
       properties:
         data:
           type: array
@@ -6536,15 +6068,17 @@ components:
             $ref: '#/components/schemas/AdminSubscription'
         meta:
           $ref: '#/components/schemas/PageMeta'
-
-    # ------------------------------------------------------------- dashboard & reports
     UpcomingDelivery:
       type: object
-      required: [kind, date]
+      required:
+        - kind
+        - date
       properties:
         kind:
           type: string
-          enum: [order, subscription_delivery]
+          enum:
+            - order
+            - subscription_delivery
         date:
           type: string
           format: date
@@ -6558,19 +6092,18 @@ components:
           nullable: true
     DashboardStats:
       type: object
-      required: [total_orders, new_orders, preparing_orders, new_shipping_orders, new_event_orders, awaiting_payment_orders, active_subscriptions, unavailable_products]
+      required:
+        - pending_orders
+        - preparing_orders
+        - upcoming_deliveries
+        - active_subscriptions
+        - unavailable_products
       properties:
-        total_orders:
-          type: integer
-        new_orders:
+        pending_orders:
           type: integer
         preparing_orders:
           type: integer
-        new_shipping_orders:
-          type: integer
-        new_event_orders:
-          type: integer
-        awaiting_payment_orders:
+        upcoming_deliveries:
           type: integer
         active_subscriptions:
           type: integer
@@ -6578,19 +6111,19 @@ components:
           type: integer
     Dashboard:
       type: object
-      required: [stats, needs_attention, latest_orders, upcoming_deliveries]
+      required:
+        - stats
+        - needs_attention
+        - latest_orders
+        - upcoming_deliveries
       properties:
         stats:
           $ref: '#/components/schemas/DashboardStats'
         needs_attention:
           type: object
-          description: How close counts as "approaching" deadlines or preparation dates is not specified.
+          description: Follow-up lists. "Preparation due or approaching" uses the 7-day default in Q16.
           properties:
             pending_review:
-              type: array
-              items:
-                $ref: '#/components/schemas/AdminOrderSummary'
-            payment_deadline_approaching:
               type: array
               items:
                 $ref: '#/components/schemas/AdminOrderSummary'
@@ -6602,21 +6135,23 @@ components:
               type: array
               items:
                 $ref: '#/components/schemas/AdminOrderSummary'
-            out_of_stock_products:
-              type: array
-              items:
-                $ref: '#/components/schemas/AdminProduct'
         latest_orders:
           type: array
           items:
             $ref: '#/components/schemas/AdminOrderSummary'
+          description: Maximum 10 rows (ADR-022).
         upcoming_deliveries:
           type: array
           items:
             $ref: '#/components/schemas/UpcomingDelivery'
+          description: Next 7 days, maximum 20 rows (ADR-022).
     SalesReport:
       type: object
-      required: [date_from, date_to, rows]
+      required:
+        - date_from
+        - date_to
+        - data
+        - meta
       properties:
         date_from:
           type: string
@@ -6624,11 +6159,17 @@ components:
         date_to:
           type: string
           format: date
-        rows:
+        data:
           type: array
           items:
             type: object
-            required: [order_type, grandma, orders_count, subtotal, fees, total]
+            required:
+              - order_type
+              - grandma
+              - orders_count
+              - subtotal
+              - fees
+              - total
             properties:
               order_type:
                 $ref: '#/components/schemas/OrderType'
@@ -6642,9 +6183,16 @@ components:
                 $ref: '#/components/schemas/Money'
               total:
                 $ref: '#/components/schemas/Money'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
     SubscriptionsReport:
       type: object
-      required: [date_from, date_to, active_count, completed_count, delivered_deliveries_count]
+      required:
+        - date_from
+        - date_to
+        - active_count
+        - completed_count
+        - delivered_deliveries_count
       properties:
         date_from:
           type: string
@@ -6660,7 +6208,12 @@ components:
           type: integer
     GrandmaDuesReport:
       type: object
-      required: [date_from, date_to, commission_rate, rows]
+      required:
+        - date_from
+        - date_to
+        - commission_rate
+        - data
+        - meta
       properties:
         date_from:
           type: string
@@ -6671,11 +6224,17 @@ components:
         commission_rate:
           type: number
           format: double
-        rows:
+        data:
           type: array
           items:
             type: object
-            required: [grandma, orders_value, subscriptions_value, total_value, platform_share, grandma_due]
+            required:
+              - grandma
+              - orders_value
+              - subscriptions_value
+              - total_value
+              - platform_share
+              - grandma_due
             properties:
               grandma:
                 $ref: '#/components/schemas/GrandmaAdminRef'
@@ -6693,3 +6252,17 @@ components:
                 $ref: '#/components/schemas/Money'
               grandma_due:
                 $ref: '#/components/schemas/Money'
+        meta:
+          $ref: '#/components/schemas/PageMeta'
+    SeasonPage:
+      type: object
+      required:
+        - data
+        - meta
+      properties:
+        data:
+          type: array
+          items:
+            $ref: '#/components/schemas/Season'
+        meta:
+          $ref: '#/components/schemas/PageMeta'

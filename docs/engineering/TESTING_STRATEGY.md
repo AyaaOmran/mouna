@@ -6,9 +6,9 @@ Vitest is the only runner. Tests live beside the code as `*.spec.ts`. End-to-end
 
 | Layer | Covers | Database |
 |---|---|---|
-| Unit | State decisions, fee math, locale fallback, permission checks with a mocked repository | none |
-| Integration | Transactions, locks, migrations, webhook idempotency, expiry | PostgreSQL and Redis provided by the environment |
-| E2E | Register and login, regular checkout, shipping approval and pay, subscription activation, permission denial | same |
+| Unit | State decisions, fee math, availability rule, permission checks with a mocked repository | none |
+| Integration | Transactions, locks, migrations, webhook idempotency, subscription expiry, pagination | PostgreSQL and Redis provided by the environment |
+| E2E | Register and login, regular checkout, shipping pay then confirm, subscription activation, review, permission denial | same |
 
 Do not require Docker. The Vitest scripts are `test: "vitest run"`, `test:watch: "vitest"`, `test:cov: "vitest run --coverage"`, and `test:e2e: "vitest run --config ./vitest.config.e2e.ts"`. The test script reads `DATABASE_URL` and `REDIS_URL`. If they are absent, integration tests fail with a clear message. They do not skip silently.
 
@@ -18,10 +18,13 @@ Each feature file lists its own cases. The payment and order features additional
 
 - Two concurrent checkouts of the last unit. One succeeds and one returns `OUT_OF_STOCK`.
 - Webhook replay does not double-confirm.
-- Expiry and webhook racing on one order. The cancelled order stays cancelled.
+- A late webhook after cancellation does not reopen the order.
 - Customer A cannot read customer B's order.
-- Admin without `orders` receives 403.
-- Arabic and English error messages for one validation failure, same code and status.
+- Admin without `orders.view` receives 403.
+- Arabic error message for one validation failure, with the stable code and status.
+- Pagination: `page`/`limit` bounds return 422; `page > total_pages` returns `data: []`; the sort is stable across pages.
+- Delivery availability: a date before the lead-time floor or a period inside the preparation minimum is not returned.
+- Review: undelivered and duplicate orders are rejected; rating bounds; aggregates change after commit.
 - Address-book limit: fifth active address succeeds; sixth returns `409 ADDRESS_LIMIT_REACHED`; soft-deleted historical rows are excluded; concurrent create requests never produce more than five active rows.
 - Socket.IO order monitoring: an unauthenticated or unauthorized subscription receives no order event; an authorized room receives an event only after the status transaction commits; a reconnecting client restores state through REST.
 

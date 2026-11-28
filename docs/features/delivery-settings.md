@@ -1,44 +1,46 @@
-# Delivery and shipping settings
+# Delivery reference data
 
 ## 1. Feature overview
 
-Admins configure zones, periods, slots, holidays, preparation minimum, countries, and shipping companies.
+Delivery zones with fixed fees, a fixed period list, supported shipping countries with fixed fees, and one preparation setting are prepared before launch. There is no admin CRUD for them.
 
 ## 2. Scope
 
-In: the settings routes. Out: assigning a driver.
+In: seeded reference data, the public read endpoints, and the nearest-delivery-date calculation. Out: holiday calendars, weekday slot tables, shipping-company accounts, operational settings pages, driver assignment, and capacity limits.
 
 ## 3. User roles
 
-Admin with `delivery`. Public can list active zones, countries, and delivery availability.
+Guest and customer read active zones, countries, periods, and availability. No admin writes in v1.
 
 ## 4. Permissions
 
-`delivery`. Public GETs are open.
+The public GETs are open. There is no `delivery` function key and no admin route.
 
 ## 5. Business rules
 
-Nearest slot uses active periods, slots, holidays, and `min_preparation_hours`. Fees are preset. Countries and zones can be deactivated and then cannot be used for new orders.
+A local order uses an active zone and its fixed `fee`. A shipping order uses an active country and its fixed `fee`. Fees are snapshotted on the order.
+
+The nearest-date rule (ADR-021): a date is deliverable when at least one active period starts at least `min_preparation_hours` after the current time and the date is not earlier than `today + the longest lead_time_days` in the order. Every calendar day is deliverable. There is no holiday exclusion and no capacity check. A non-scheduled order gets the earliest deliverable date and its first qualifying period.
 
 Normative detail: [BUSINESS_LOGIC.md](../product/BUSINESS_LOGIC.md) and [STATE_MACHINES.md](../architecture/STATE_MACHINES.md).
 
 ## 6. User workflows
 
-Admin maintains reference data. Checkout reads it.
+Checkout reads zones, countries, and availability. A seed prepares the data before launch.
 
 ## 7. Related entities
 
-DeliveryZone, DeliveryPeriod, DeliverySlot, Holiday, DeliverySetting, ShippingCountry, ShippingCompany.
+DeliveryZone, DeliveryPeriod, DeliverySetting, ShippingCountry.
 
 ## 8. Related endpoints
 
-Public `/delivery-zones`, `/shipping-countries`, `/payment-methods`, `/delivery/availability`, and the `/admin` routes in the endpoint list.
+Public `GET /delivery-zones`, `GET /shipping-countries`, `GET /payment-methods`, and `GET /delivery/availability`.
 
 Paths are listed in [API_ENDPOINTS.md](../api/API_ENDPOINTS.md). Field shapes follow [swagger.yaml](../api/swagger.yaml).
 
 ## 9. Validation
 
-Fee is `numeric(10,2)`. Weekday on a slot is 0 through 6. Holiday date is unique.
+Fee is `numeric(10,2)`. `start_time` is before `end_time`. `min_preparation_hours` is a non-negative integer. Deactivated rows cannot be used for new orders.
 
 ## 10. Security requirements
 
@@ -48,7 +50,7 @@ Also apply [SECURITY.md](../engineering/SECURITY.md).
 
 ## 11. Performance considerations
 
-Availability is a small in-memory calculation over the reference rows for the requested horizon. Do not cache it in Redis in v1.
+Availability is a small in-memory calculation over the seeded rows for the requested window. Do not cache it in Redis in v1.
 
 ## 12. Background jobs
 
@@ -56,19 +58,19 @@ None.
 
 ## 13. Edge cases
 
-Changing a zone fee does not rewrite existing order snapshots.
+Changing a zone or country fee does not rewrite existing order snapshots. The availability window defaults to 14 days and is capped at 60.
 
 ## 14. Failure scenarios
 
-Deleting a period that slots still use returns 409. The endpoint list allows period delete. Honor the foreign key.
+An inactive zone or country at checkout is 422. A date earlier than the lead-time floor is 422.
 
 ## 15. Acceptance criteria
 
-Availability never returns a holiday or a slot before now plus minimum preparation.
+Availability never returns a date before the lead-time floor or a period that starts too soon. No `/admin/delivery-*`, `/admin/holidays`, `/admin/shipping-*`, or `/admin/settings/delivery` path exists.
 
 ## 16. Testing requirements
 
-Unit: nearest-slot calculation. Integration: inactive zone rejected at checkout.
+Unit: nearest-date calculation across the lead-time floor and the preparation minimum. Integration: inactive zone rejected at checkout.
 
 Definition of done: [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md).
 
@@ -82,4 +84,4 @@ No implementation work has been done. No tests have been executed.
 
 ## 19. Known limitations
 
-No capacity per slot.
+No capacity per period. No admin screen; adding one needs a new ADR.

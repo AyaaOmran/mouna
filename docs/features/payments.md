@@ -2,7 +2,7 @@
 
 ## 1. Feature overview
 
-Electronic payments and admin-recorded refunds. The gateway vendor is an interface.
+Electronic payments and admin-recorded refunds. The gateway vendor is an interface. Payment is taken inside Checkout before the order is submitted; the order row exists first because `PaymentTransaction.order_id` is required (ADR-020).
 
 ## 2. Scope
 
@@ -10,21 +10,23 @@ In: start payment, poll status, webhook, admin refunds. Out: automatic gateway r
 
 ## 3. User roles
 
-Customer starts and reads own payments. Admin with `orders` or `subscriptions` records the matching refund. The gateway calls the webhook.
+Customer starts and reads own payments. Admin with `orders.manage_payment_shipping` or `subscriptions.update_delivery_status` records the matching refund. The gateway calls the webhook.
 
 ## 4. Permissions
 
-Refunds require `orders` or `subscriptions` for the parent type. Webhook is public and authenticated by the adapter signature.
+Order refunds require `orders.manage_payment_shipping`. Subscription refunds require `subscriptions.update_delivery_status`. The webhook is public and authenticated by the adapter signature.
 
 ## 5. Business rules
 
-Amount is computed by the server. Exactly one parent. Idempotent webhook. Race rules in BUSINESS_LOGIC. Cash is not a PaymentTransaction. An admin sets cash `payment_status` to `paid`. Refund amount is admin-entered and cannot exceed the captured total.
+Amount is computed by the server. Exactly one parent. Idempotent webhook. Cash is not a `PaymentTransaction`. An admin sets cash `payment_status` to `paid`. Refund amount is admin-entered and cannot exceed the captured total.
+
+A successful payment sets `payment_status = paid` and leaves the order `pending`. A failed attempt records `failed` and leaves the order `pending` / `unpaid`. The order `payment_status` has no `failed` value.
 
 Normative detail: [BUSINESS_LOGIC.md](../product/BUSINESS_LOGIC.md) and [STATE_MACHINES.md](../architecture/STATE_MACHINES.md).
 
 ## 6. User workflows
 
-Create a pending transaction after the order or subscription exists. Adapter returns `gateway_action`. Webhook updates the transaction and the parent.
+Create a pending transaction after the order or subscription row exists. The adapter returns `gateway_action`. The webhook updates the transaction and the parent. A retry creates a new transaction.
 
 ## 7. Related entities
 
@@ -52,7 +54,7 @@ Webhook work is a short transaction. Do not call the gateway again while holding
 
 ## 12. Background jobs
 
-Expiry jobs live with orders and subscriptions. The webhook is not queued.
+Only `expire-subscription` remains. Orders have no expiry job. The webhook is not queued.
 
 ## 13. Edge cases
 
@@ -60,15 +62,15 @@ A second pending transaction is allowed after `failed`. Two `succeeded` transact
 
 ## 14. Failure scenarios
 
-Unconfigured provider fails closed with 503 and a stable code `PAYMENT_PROVIDER_UNAVAILABLE`. Unsigned webhook returns 401.
+An unconfigured provider fails closed with 503 and a stable code `PAYMENT_PROVIDER_UNAVAILABLE`. An unsigned webhook returns 401.
 
 ## 15. Acceptance criteria
 
-Successful payment never has a null parent. Replay does not double-apply. Refund XOR is enforced by the database.
+A successful payment never has a null parent. Replay does not double-apply. Refund XOR is enforced by the database. No order ever enters `awaiting_payment`.
 
 ## 16. Testing requirements
 
-Integration: idempotent webhook, race with expiry, refund check constraint, ownership. Use a fake gateway adapter.
+Integration: idempotent webhook, retry after failure, race with cancellation, refund check constraint, ownership. Use a fake gateway adapter.
 
 Definition of done: [TESTING_STRATEGY.md](../engineering/TESTING_STRATEGY.md).
 

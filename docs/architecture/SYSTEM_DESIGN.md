@@ -5,11 +5,11 @@ MONAT v1 is one NestJS process, one PostgreSQL database, and one Redis. Redis ba
 ```text
 Client
   → HTTP /api/v1
-  → guard, validation, localization
+  → guard, validation
   → feature service
   → TypeORM transaction
   → PostgreSQL
-  → enqueue only OTP, expiry, and delivery reminders
+  → enqueue only OTP, subscription expiry, and delivery reminders
 Redis / BullMQ workers in the same codebase
 ```
 
@@ -43,9 +43,9 @@ For an order status change, the service commits the order and `OrderStatusHistor
 | Schema | Migrations only. `synchronize: false`. |
 | Money | `numeric(10,2)`, currency SYP |
 | Auth | 15-minute JWT access token, opaque refresh token, Argon2id |
-| Language | `Accept-Language`, default `ar` |
-| Pagination | `page`, `limit`, default 20, maximum 100 |
-| Jobs | OTP SMS, payment expiry, delivery reminders |
+| Language | Arabic only, RTL; no `Accept-Language` (ADR-017) |
+| Pagination | `page`, `limit`, default 20, maximum 100; `id` tie-breaker (ADR-022) |
+| Jobs | OTP SMS, subscription expiry, delivery reminders |
 | Providers | Payment, SMS, and file storage are interfaces. No vendor is selected. |
 
 ## What is intentionally absent
@@ -63,4 +63,4 @@ Approved for later measurement, not as a claim about the current scaffold:
 
 ## Process shape
 
-`src/` is organized by feature module. Suggested layout is in [MODULES.md](MODULES.md). Shared bootstrap, the exception filter, and i18n live under `src/common` and `src/config`.
+`src/` is organized by feature module. Suggested layout is in [MODULES.md](MODULES.md). Shared bootstrap, the exception filter, and the Arabic message catalog live under `src/common` and `src/config`.
